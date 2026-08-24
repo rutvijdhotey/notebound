@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "test": "jest",
     "patch-ios": "node scripts/patch-ios-pbxproj.js",
+    "icons": "node scripts/generate-icons.js",
     "pods": "cd ios && LANG=en_US.UTF-8 pod install && cd .. && node scripts/patch-ios-pbxproj.js",
     "prebuild:clean": "npx expo prebuild --clean && npm run pods"
   },
