@@ -1,0 +1,1484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notebound Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #FBFAF8;
+    --surface:    #FFFFFF;
+    --surface-2:  #F4F1EC;
+    --ink:        #1B1815;
+    --ink-2:      #55504A;
+    --ink-3:      #8B837A;
+    --rule:       #E3DDD3;
+    --rule-soft:  #EFEAE2;
+    --accent:     #A85A22;
+    --accent-2:   #C8703A;
+    --accent-soft: rgba(168, 90, 34, 0.10);
+    --teal:       #1F5F5B;
+    --teal-soft:  rgba(31, 95, 91, 0.10);
+    --danger:     #A62A20;
+    --danger-soft: rgba(166, 42, 32, 0.09);
+
+    --display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #131110;
+      --surface:    #1B1815;
+      --surface-2:  #232019;
+      --ink:        #EDE7DE;
+      --ink-2:      #A79E93;
+      --ink-3:      #7C736A;
+      --rule:       #322C26;
+      --rule-soft:  #262119;
+      --accent:     #E08843;
+      --accent-2:   #EFA164;
+      --accent-soft: rgba(224, 136, 67, 0.14);
+      --teal:       #6FB9B0;
+      --teal-soft:  rgba(111, 185, 176, 0.14);
+      --danger:     #E4695C;
+      --danger-soft: rgba(228, 105, 92, 0.13);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #131110;
+    --surface:    #1B1815;
+    --surface-2:  #232019;
+    --ink:        #EDE7DE;
+    --ink-2:      #A79E93;
+    --ink-3:      #7C736A;
+    --rule:       #322C26;
+    --rule-soft:  #262119;
+    --accent:     #E08843;
+    --accent-2:   #EFA164;
+    --accent-soft: rgba(224, 136, 67, 0.14);
+    --teal:       #6FB9B0;
+    --teal-soft:  rgba(111, 185, 176, 0.14);
+    --danger:     #E4695C;
+    --danger-soft: rgba(228, 105, 92, 0.13);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.62;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 28px 120px;
+  }
+
+  /* ── masthead ─────────────────────────────────────────── */
+
+  .masthead {
+    border-bottom: 1px solid var(--ink);
+    padding: 64px 0 28px;
+    margin-bottom: 12px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(40px, 7vw, 76px);
+    line-height: 0.98;
+    letter-spacing: -0.028em;
+    text-wrap: balance;
+    margin: 0 0 20px;
+  }
+
+  .deck {
+    font-size: clamp(18px, 2.2vw, 22px);
+    line-height: 1.45;
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin: 0 0 34px;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .fact {
+    background: var(--paper);
+    padding: 14px 16px 16px;
+  }
+
+  .fact b {
+    display: block;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 26px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fact span {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-top: 5px;
+  }
+
+  /* ── layout ───────────────────────────────────────────── */
+
+  .layout {
+    display: block;
+  }
+
+  @media (min-width: 1040px) {
+    .layout {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      gap: 60px;
+      align-items: start;
+    }
+  }
+
+  .rail {
+    display: none;
+  }
+
+  @media (min-width: 1040px) {
+    .rail {
+      display: block;
+      position: sticky;
+      top: 28px;
+      padding-top: 42px;
+    }
+  }
+
+  .rail p {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+
+  .rail ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    counter-reset: rail;
+  }
+
+  .rail a {
+    font-family: var(--display);
+    font-size: 13.5px;
+    line-height: 1.3;
+    color: var(--ink-2);
+    text-decoration: none;
+    display: flex;
+    gap: 9px;
+  }
+
+  .rail a::before {
+    counter-increment: rail;
+    content: counter(rail);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+
+  .rail a:hover, .rail a:focus-visible { color: var(--accent); }
+
+  main { min-width: 0; max-width: 840px; padding-top: 34px; }
+
+  /* ── prose ────────────────────────────────────────────── */
+
+  section { padding-top: 44px; scroll-margin-top: 24px; }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(27px, 3.6vw, 36px);
+    line-height: 1.08;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+    margin: 0 0 6px;
+    padding-top: 18px;
+    border-top: 3px solid var(--ink);
+  }
+
+  h2 .num {
+    display: block;
+    font-family: var(--mono);
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 21px;
+    line-height: 1.2;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+    margin: 42px 0 2px;
+  }
+
+  h4 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 30px 0 -4px;
+  }
+
+  p { max-width: 68ch; margin: 16px 0; }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  strong { font-weight: 600; }
+
+  em { font-style: italic; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.83em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    padding: 0.1em 0.35em;
+    word-break: break-word;
+  }
+
+  ul.plain { max-width: 68ch; padding-left: 20px; margin: 16px 0; }
+  ul.plain li { margin: 9px 0; }
+  ul.plain li::marker { color: var(--accent); }
+
+  .lede {
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 18px 0 4px;
+  }
+
+  /* ── decision block ───────────────────────────────────── */
+
+  .decision {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 20px 22px 18px;
+    margin: 28px 0;
+  }
+
+  .decision > .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .decision > h5 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 18.5px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+    color: var(--ink);
+  }
+
+  .decision dl {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 6px 16px;
+    margin: 0;
+    font-size: 15.5px;
+    line-height: 1.5;
+  }
+
+  .decision dt {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding-top: 5px;
+  }
+
+  .decision dd { margin: 0; color: var(--ink-2); }
+  .decision dd strong { color: var(--ink); }
+
+  /* ── figures ──────────────────────────────────────────── */
+
+  figure {
+    margin: 34px 0;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 22px 20px 16px;
+  }
+
+  .fig-scroll { overflow-x: auto; }
+
+  figure svg {
+    display: block;
+    width: 100%;
+    min-width: 620px;
+    height: auto;
+    color: var(--ink);
+  }
+
+  figcaption {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--ink-3);
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule-soft);
+    max-width: 78ch;
+  }
+
+  figcaption b {
+    color: var(--accent);
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-right: 8px;
+  }
+
+  /* ── tables ───────────────────────────────────────────── */
+
+  .table-wrap { overflow-x: auto; margin: 26px 0; border: 1px solid var(--rule); }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+    font-size: 14.5px;
+    line-height: 1.45;
+  }
+
+  th {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--ink-3);
+    background: var(--surface-2);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: bottom;
+  }
+
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+    color: var(--ink-2);
+  }
+
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { color: var(--ink); }
+  td code { font-size: 0.86em; }
+
+  /* ── callouts ─────────────────────────────────────────── */
+
+  .note, .risk {
+    border: 1px solid var(--rule);
+    padding: 16px 18px;
+    margin: 26px 0;
+    font-size: 15.5px;
+    line-height: 1.55;
+    max-width: 72ch;
+  }
+
+  .note { background: var(--teal-soft); border-color: color-mix(in srgb, var(--teal) 26%, transparent); }
+  .risk { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+
+  .note p, .risk p { margin: 0; max-width: none; }
+  .note p + p, .risk p + p { margin-top: 10px; }
+
+  .note .tag, .risk .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 7px;
+  }
+
+  .note .tag { color: var(--teal); }
+  .risk .tag { color: var(--danger); }
+
+  /* ── pills ────────────────────────────────────────────── */
+
+  .pill {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .pill.ok    { background: var(--teal-soft);   color: var(--teal); }
+  .pill.gap   { background: var(--danger-soft); color: var(--danger); }
+  .pill.part  { background: var(--accent-soft); color: var(--accent); }
+
+  footer {
+    margin-top: 80px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--ink-3);
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">Architecture paper · verified against <code>main</code> @ 9af48af · 4 Sep 2026</p>
+    <h1>Notebound Architecture</h1>
+    <p class="deck">An offline-first travel journal that turns raw captured notes into a written trip. Every layer, and the decision behind it.</p>
+    <div class="facts">
+      <div class="fact"><b>362</b><span>tests, 40 suites</span></div>
+      <div class="fact"><b>27</b><span>SQL migrations</span></div>
+      <div class="fact"><b>6</b><span>tables + 1 view</span></div>
+      <div class="fact"><b>3</b><span>edge functions</span></div>
+      <div class="fact"><b>2</b><span>durable queues</span></div>
+      <div class="fact"><b>0</b><span>servers run by us</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <nav class="rail" aria-label="Sections">
+      <p>Contents</p>
+      <ol>
+        <li><a href="#forces">The forces</a></li>
+        <li><a href="#context">System context</a></li>
+        <li><a href="#client">Client shell</a></li>
+        <li><a href="#code">Code layering</a></li>
+        <li><a href="#data">Data layer</a></li>
+        <li><a href="#writes">Offline write path</a></li>
+        <li><a href="#photos">Photo pipeline</a></li>
+        <li><a href="#location">Location provenance</a></li>
+        <li><a href="#ai">AI layer</a></li>
+        <li><a href="#community">Community layer</a></li>
+        <li><a href="#security">Security posture</a></li>
+        <li><a href="#build">Build &amp; ops</a></li>
+        <li><a href="#failure">Failure modes</a></li>
+        <li><a href="#gaps">Known gaps</a></li>
+      </ol>
+    </nav>
+
+    <main>
+
+      <!-- ============================================ 1 -->
+      <section id="forces">
+        <h2><span class="num">01</span>The forces that shaped everything</h2>
+
+        <p class="lede">Notebound is a trip-centric journal. You start a trip, capture notes into it — voice, text, photos — and when the trip ends, Claude writes the trip up as a blog post with an itinerary and the photos it judged strongest.</p>
+
+        <p>Almost every structural decision in this codebase traces back to one of four constraints. They are worth stating first, because they explain choices that would otherwise look arbitrary.</p>
+
+        <ul class="plain">
+          <li><strong>The capture moment is unrepeatable.</strong> A note taken on a mountain pass with no signal cannot be re-taken later. Saving must never depend on the network, and never block on it.</li>
+          <li><strong>One developer, no ops.</strong> There is no team to run infrastructure. Anything requiring a server process to be babysat was rejected in favour of managed primitives — Postgres, RLS, triggers, cron, edge functions.</li>
+          <li><strong>Private by default, public by exception.</strong> A travel journal contains where you were and when. The only data that ever leaves the owner's boundary is an anonymised place aggregate, and only after the trip completes.</li>
+          <li><strong>Free-tier economics.</strong> Voice runs on-device (free) rather than a transcription API. Classification runs on Haiku; only the once-per-trip blog spends Opus with vision.</li>
+        </ul>
+
+        <p>Read the rest of this paper with those four in mind and the architecture reads as one argument rather than a pile of libraries.</p>
+      </section>
+
+      <!-- ============================================ 2 -->
+      <section id="context">
+        <h2><span class="num">02</span>System context</h2>
+
+        <p>There are three planes: the device, one Supabase project, and the Anthropic API. Nothing else. There is no backend service of our own, no queue broker, no CDN we configured, no analytics pipeline.</p>
+
+        <figure>
+          <div class="fig-scroll">
+            <svg viewBox="0 0 1050 500" role="img" aria-label="Notebound system context: the iOS app's service layer talks to Supabase Auth, Postgres, Realtime, Storage and Edge Functions; only the edge functions hold the service role key and only they call the Anthropic API." xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+                <marker id="ah-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+                </marker>
+                <marker id="ah-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--teal)"/>
+                </marker>
+              </defs>
+
+              <g font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="0.09em" fill="currentColor" opacity="0.55">
+                <text x="18" y="46">DEVICE — iOS</text>
+                <text x="472" y="46">SUPABASE PROJECT</text>
+                <text x="848" y="46">THIRD PARTY</text>
+              </g>
+
+              <g fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-dasharray="3 4">
+                <rect x="16" y="56" width="214" height="234"/>
+                <rect x="470" y="56" width="310" height="404"/>
+                <rect x="846" y="356" width="180" height="104"/>
+              </g>
+
+              <!-- device boxes -->
+              <g fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2">
+                <rect x="30" y="76" width="186" height="42" rx="3"/>
+                <rect x="30" y="132" width="186" height="38" rx="3"/>
+                <rect x="30" y="190" width="88" height="86" rx="3"/>
+                <rect x="128" y="190" width="88" height="86" rx="3"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="123" y="94">screens ·</text>
+                <text x="123" y="108">components · hooks</text>
+                <text x="123" y="156">service layer</text>
+                <text x="74" y="216">Async</text>
+                <text x="74" y="230">Storage</text>
+                <text x="74" y="250" opacity="0.65">note q</text>
+                <text x="74" y="264" opacity="0.65">photo q</text>
+                <text x="172" y="216">Apple</text>
+                <text x="172" y="236" opacity="0.65">STT</text>
+                <text x="172" y="250" opacity="0.65">CoreLoc</text>
+                <text x="172" y="264" opacity="0.65">MapKit</text>
+              </g>
+              <g stroke="var(--accent)" stroke-width="1.2" marker-end="url(#ah-a)" fill="none">
+                <line x1="74" y1="170" x2="74" y2="186"/>
+                <line x1="172" y1="170" x2="172" y2="186"/>
+              </g>
+
+              <!-- bus -->
+              <line x1="216" y1="151" x2="288" y2="151" stroke="currentColor" stroke-width="1.2"/>
+              <line x1="290" y1="96" x2="290" y2="404" stroke="currentColor" stroke-width="1.2"/>
+              <circle cx="290" cy="151" r="3" fill="currentColor"/>
+
+              <!-- supabase boxes -->
+              <g fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.2">
+                <rect x="486" y="76" width="278" height="40" rx="3"/>
+                <rect x="486" y="136" width="278" height="72" rx="3"/>
+                <rect x="486" y="228" width="278" height="40" rx="3"/>
+                <rect x="486" y="288" width="278" height="40" rx="3"/>
+                <rect x="486" y="368" width="278" height="72" rx="3"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="625" y="101">Auth (GoTrue)</text>
+                <text x="625" y="160">Postgres — RLS, triggers,</text>
+                <text x="625" y="176">CHECK constraints,</text>
+                <text x="625" y="192">pg_cron sweeper</text>
+                <text x="625" y="253">Realtime — WAL → WebSocket</text>
+                <text x="625" y="313">Storage — private bucket</text>
+                <text x="625" y="392">Edge Functions (Deno)</text>
+                <text x="625" y="410" opacity="0.65">detect-intent · tag-note</text>
+                <text x="625" y="426" opacity="0.65">generate-blog</text>
+              </g>
+
+              <!-- bus to supabase -->
+              <g stroke="currentColor" stroke-width="1.2" fill="none">
+                <line x1="290" y1="96" x2="482" y2="96" marker-end="url(#ah)"/>
+                <line x1="296" y1="172" x2="482" y2="172" marker-end="url(#ah)" marker-start="url(#ah)"/>
+                <line x1="482" y1="248" x2="294" y2="248" marker-end="url(#ah)"/>
+                <line x1="290" y1="308" x2="482" y2="308" marker-end="url(#ah)"/>
+                <line x1="290" y1="404" x2="482" y2="404" marker-end="url(#ah)"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" text-anchor="middle" opacity="0.75">
+                <text x="386" y="89">sign in · refresh</text>
+                <text x="386" y="165">PostgREST · RLS</text>
+                <text x="386" y="241">row changes</text>
+                <text x="386" y="301">upload · sign URL</text>
+                <text x="386" y="397">invoke + Bearer JWT</text>
+              </g>
+
+              <!-- storage to edge -->
+              <line x1="625" y1="328" x2="625" y2="364" stroke="var(--teal)" stroke-width="1.2" marker-start="url(#ah-t)" fill="none"/>
+              <text x="637" y="350" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity="0.75">reads photos</text>
+
+              <!-- edge to postgres, service role -->
+              <path d="M 764 392 L 810 392 L 810 172 L 768 172" fill="none" stroke="var(--teal)" stroke-width="1.2" marker-end="url(#ah-t)"/>
+              <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity="0.75">
+                <text x="818" y="272">service role —</text>
+                <text x="818" y="286">bypasses RLS</text>
+              </g>
+
+              <!-- edge to anthropic -->
+              <line x1="764" y1="424" x2="856" y2="424" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"/>
+              <text x="810" y="416" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" text-anchor="middle" opacity="0.75">HTTPS</text>
+
+              <rect x="858" y="376" width="156" height="64" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="936" y="402">Anthropic API</text>
+                <text x="936" y="420" opacity="0.65">Haiku 4.5 · Opus 4.8</text>
+              </g>
+            </svg>
+          </div>
+          <figcaption><b>Fig 1</b>The service layer is the single point of contact with the backend — screens never call Supabase directly. Amber is device-side, teal is Supabase-side. Only the edge functions hold the service role key and the Anthropic key; the client holds neither, which is why every privileged operation is shaped as a function invocation rather than a client call.</figcaption>
+        </figure>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>Supabase as the entire backend, not a database with a service in front of it</h5>
+          <dl>
+            <dt>Alternatives</dt><dd>Firebase; a hand-rolled Node/Postgres API on Fly or Railway; Expo + a serverless API layer.</dd>
+            <dt>Why</dt><dd>Auth, row-level authorization, object storage, change streaming, cron and function hosting arrive as one thing with one connection string. <strong>Authorization lives in the database</strong>, so there is no application tier that can forget to check ownership — the check runs whichever path reaches the row.</dd>
+            <dt>Cost</dt><dd>Real vendor lock-in: RLS policies, triggers, <code>SECURITY DEFINER</code> functions and pg_cron jobs are the application. Free-tier projects auto-pause after ~7 days idle, which required a keep-alive job (§12).</dd>
+          </dl>
+        </div>
+      </section>
+
+      <!-- ============================================ 3 -->
+      <section id="client">
+        <h2><span class="num">03</span>The client shell</h2>
+
+        <p>React Native 0.81.5 on Expo SDK 54, React 19.1, TypeScript in <code>strict</code> mode, New Architecture (Fabric/TurboModules) enabled, iOS deployment target 16.4, bundle <code>com.rutvijdhotey.notebound</code>.</p>
+
+        <p>The project runs the <strong>prebuild</strong> workflow rather than the managed one: <code>ios/</code> and <code>android/</code> are generated from <code>app.json</code> and are gitignored, regenerated with <code>npx expo prebuild --clean</code>. That keeps the native projects disposable while still allowing native modules that Expo Go cannot host — on-device speech recognition and Apple Maps in particular.</p>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>On-device iOS speech recognition instead of a transcription API</h5>
+          <dl>
+            <dt>Alternatives</dt><dd>Whisper via an edge function; a hosted STT vendor.</dd>
+            <dt>Why</dt><dd>Free, no per-minute cost, no audio ever leaves the device, and it streams interim results so the capture sheet can show words appearing as you speak. Audio is the single largest payload the app would otherwise upload — over a hotel Wi-Fi or foreign roaming, that matters.</dd>
+            <dt>Cost</dt><dd>iOS-only quality, English-locked (<code>lang: 'en-US'</code>), and the module needs a real build. <code>useVoiceRecording</code> carries three defensive event handlers — <code>end</code>, <code>nomatch</code>, <code>error</code> — because iOS can end a session without ever emitting a final result, which would otherwise strand the mic button on "Listening…".</dd>
+          </dl>
+        </div>
+
+        <h3>Navigation: a stack over a pager, not a tab navigator</h3>
+
+        <p>Navigation is three nested pieces. <code>AppNavigator</code> switches on session presence — no session renders the auth stack, a session renders <code>MainStack</code>. There is no "logged out" route inside the app; signing out unmounts the entire authenticated tree, which makes stale-state leaks structurally impossible.</p>
+
+        <p><code>TabNavigator</code> is <em>not</em> <code>@react-navigation/bottom-tabs</code>. It is a <code>PagerView</code> with a hand-built tab bar, so the four tabs (Home · Explore · Search · Blog) can be swiped between as well as tapped. The tab bar is a plain row of <code>Pressable</code>s driven by <code>pagerRef.setPage()</code>.</p>
+
+        <p>The capture button lives above the navigator, not inside a screen. <code>MainStack</code> renders a <code>View</code> containing the stack, then <code>FloatingCaptureButton</code>, then <code>NoteCaptureSheet</code> as siblings — so capture is reachable from every screen at every depth, and a note can be started from a blog post as easily as from Home. Tap opens the sheet; long-press opens it and starts recording immediately.</p>
+
+        <p><code>MainStack</code> is also where three background behaviours are wired, because it is the outermost component that exists exactly once per authenticated session: queue draining on mount, on network reconnect, and on <code>AppState</code> returning to <code>active</code>; and the location sweep and place-name backfill, run once per session in that order (§08).</p>
+
+        <h4>Theme</h4>
+        <p>A single dark palette in <code>src/theme/index.ts</code> — warm amber <code>#C8703A</code> on <code>#111111</code> — exported as flat token objects (<code>Colors</code>, <code>CategoryColors</code>, <code>Typography</code>, <code>Spacing</code>, <code>Shadows</code>, <code>BorderRadius</code>). No styling library. Trips with no cover photo get a deterministic gradient chosen by hashing the trip name, so the same trip is always the same colour without storing anything.</p>
+      </section>
+
+      <!-- ============================================ 4 -->
+      <section id="code">
+        <h2><span class="num">04</span>Code layering, and where the tests live</h2>
+
+        <p>The <code>src/</code> tree follows one convention with real teeth: <strong>every service is split into a <code>*Service.ts</code> that does I/O and a <code>*Helpers.ts</code> that is pure</strong>. All the decisions live in the helpers, all the network lives in the services.</p>
+
+        <figure>
+          <div class="fig-scroll">
+            <svg viewBox="0 0 900 372" role="img" aria-label="Four code layers — screens, hooks, services, pure helpers — with the unit test boundary covering helpers and services, and database invariants sitting underneath everything." xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+
+              <g stroke="currentColor" stroke-width="1.2">
+                <rect x="40" y="24" width="560" height="52" rx="3" fill="var(--accent-soft)"/>
+                <rect x="40" y="100" width="560" height="52" rx="3" fill="var(--accent-soft)"/>
+                <rect x="40" y="176" width="560" height="52" rx="3" fill="var(--surface-2)"/>
+                <rect x="40" y="252" width="560" height="52" rx="3" fill="var(--surface-2)"/>
+              </g>
+
+              <g font-family="JetBrains Mono, monospace" fill="currentColor">
+                <text x="58" y="46" font-size="12.5">screens/ · components/</text>
+                <text x="58" y="64" font-size="10.5" opacity="0.6">render only — no supabase import</text>
+                <text x="58" y="122" font-size="12.5">hooks/</text>
+                <text x="58" y="140" font-size="10.5" opacity="0.6">useTrips · useNotes · useBlogPosts · useSignedPhotos — subscribe, cache, expose refresh</text>
+                <text x="58" y="198" font-size="12.5">services/*Service.ts</text>
+                <text x="58" y="216" font-size="10.5" opacity="0.6">the only files that import supabase, Location, ImagePicker, AsyncStorage</text>
+                <text x="58" y="274" font-size="12.5">services/*Helpers.ts</text>
+                <text x="58" y="292" font-size="10.5" opacity="0.6">pure — merge rules, distance maths, validation, markdown, ranking, formatting</text>
+              </g>
+
+              <g stroke="currentColor" stroke-width="1.2" marker-end="url(#ah2)" fill="none">
+                <line x1="320" y1="76" x2="320" y2="96"/>
+                <line x1="320" y1="152" x2="320" y2="172"/>
+                <line x1="320" y1="228" x2="320" y2="248"/>
+              </g>
+
+              <path d="M 620 176 L 644 176 L 644 304 L 620 304" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+              <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)">
+                <text x="656" y="230">362 unit tests run</text>
+                <text x="656" y="246">here — no device,</text>
+                <text x="656" y="262">no network</text>
+              </g>
+
+              <rect x="40" y="322" width="560" height="34" rx="3" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.2"/>
+              <text x="58" y="343" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor">Postgres: RLS · CHECK · triggers — the invariants no client test can hold</text>
+            </svg>
+          </div>
+          <figcaption><b>Fig 2</b>The split exists so the interesting logic is testable without a simulator. <code>mergeTags</code>, <code>resolveAutoLocation</code>, <code>isPlausible</code>, <code>parseItinerary</code>, <code>rankPlaces</code> and <code>markdownToHtml</code> are all pure functions with unit tests; their callers are thin enough to read at a glance.</figcaption>
+        </figure>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>No Redux, no React Query, no state library at all</h5>
+          <dl>
+            <dt>Alternatives</dt><dd>TanStack Query for server cache; Zustand or Redux Toolkit for app state.</dd>
+            <dt>Why</dt><dd>The server already pushes changes. Each list hook does exactly three things: fetch once, subscribe to a filtered Postgres change stream, and reduce <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code> into local state. A cache library would sit between the push and the render and mostly need invalidating by hand. Only one piece of genuinely global state exists — the auth session — and that is a context.</dd>
+            <dt>Cost</dt><dd>The reducer shape is copy-pasted across <code>useTrips</code>, <code>useNotes</code>, <code>useBlogPosts</code> and <code>useTripDetail</code>. Deduplicating it into a generic hook is an obvious future refactor that has not been worth doing yet.</dd>
+          </dl>
+        </div>
+
+        <p>Two subtleties in the hooks are worth calling out because they were bugs first. Channel names carry a per-instance random suffix (<code>trips:${userId}:${instanceId}</code>) because two mounted copies of the same hook silently collided on a shared channel name. And <code>useSignedPhotos</code> joins its ref array into a single string key so the effect re-runs on <em>content</em> change rather than on every new array identity.</p>
+      </section>
+
+      <!-- ============================================ 5 -->
+      <section id="data">
+        <h2><span class="num">05</span>The data layer</h2>
+
+        <p>Six tables and one view, built up across 27 migrations. Migrations are the source of truth, numbered <code>NNN_description.sql</code>, applied through the Supabase MCP server and committed alongside the code that depends on them; <code>src/lib/database.types.ts</code> is regenerated after every schema change.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Table</th><th>Holds</th><th>Who can read</th><th>Who can write</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>profiles</code></td><td>display name, community opt-out flag</td><td>own row only</td><td>own row; auto-created by an <code>auth.users</code> trigger</td></tr>
+              <tr><td><code>trips</code></td><td>name, destinations, dates, status, cover, note count</td><td>owner</td><td>owner</td></tr>
+              <tr><td><code>notes</code></td><td>text, category, rating, coords + provenance, photo refs, timestamps, offline id</td><td>owner</td><td>owner, <em>and</em> the trip must be theirs</td></tr>
+              <tr><td><code>blog_posts</code></td><td>status, title, markdown, cover, selected photos, itinerary jsonb</td><td>owner</td><td>owner + <code>generate-blog</code> via service role</td></tr>
+              <tr><td><code>public_places</code></td><td>anonymised place identity, averaged coords, visit/rating counts</td><td><strong>everyone</strong>, including anon</td><td>nobody — only the definer function</td></tr>
+              <tr><td><code>public_place_contributions</code></td><td>note → place ledger, for idempotency</td><td><strong>nobody</strong></td><td>nobody — only the definer function</td></tr>
+              <tr><td><code>public_destinations</code></td><td>view: one row per city, place count, visits, categories</td><td>inherits <code>public_places</code></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>RLS is the authorization layer</h3>
+
+        <p>Every table has row-level security enabled and policies scoped to <code>auth.uid()</code>. Two of them do more than compare a user id, and both are load-bearing:</p>
+
+        <ul class="plain">
+          <li><strong><code>notes_insert_own</code></strong> also asserts <code>exists (select 1 from trips where id = trip_id and user_id = auth.uid())</code>. Matching <code>user_id</code> alone would let a crafted client attach their own note to someone else's trip.</li>
+          <li><strong><code>notes_update_own</code></strong> gained the same clause in migration 013, when moving notes between trips shipped. Until then, <code>UPDATE</code> had a weaker check than <code>INSERT</code> — a note could be created correctly and then moved onto a foreign trip.</li>
+        </ul>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>Invariants belong in the database, not in the app</h5>
+          <dl>
+            <dt>What that means</dt><dd><code>trips.note_count</code> is maintained by a trigger on insert, delete <em>and</em> trip-changing updates. <code>updated_at</code> is a trigger. Categories, statuses, ratings and location sources are <code>CHECK</code> constraints, not TypeScript unions — the unions in <code>*Helpers.ts</code> narrow the generated row types to match what the constraint already enforces. Ratings carry a second constraint: a rating may only exist on a rateable category, so a category switch cannot leave an orphaned star count behind.</dd>
+            <dt>Why</dt><dd>There are three write paths into <code>notes</code> — the app, the offline drain, and the tagging pass — and later a fourth (edge functions with the service role). A rule enforced in one of them is not a rule.</dd>
+            <dt>Cost</dt><dd>Business logic in PL/pgSQL is harder to test and to review than TypeScript. It is covered by SQL test files under <code>supabase/tests/</code> rather than by Jest.</dd>
+          </dl>
+        </div>
+
+        <p>Every trigger function is hardened the same way: <code>set search_path</code> pinned, and <code>EXECUTE</code> revoked from <code>public</code>, <code>anon</code> and <code>authenticated</code>. In Supabase, a <code>SECURITY DEFINER</code> function in the <code>public</code> schema is otherwise reachable as a REST endpoint — <code>/rest/v1/rpc/handle_new_user</code> — and <code>CREATE OR REPLACE</code> re-grants the default, so migrations 002a and 003a exist purely to re-revoke.</p>
+
+        <h4>Realtime, and the replica identity trap</h4>
+        <p><code>trips</code>, <code>notes</code> and <code>blog_posts</code> are in the <code>supabase_realtime</code> publication. Migration 009 sets <code>REPLICA IDENTITY FULL</code> on all three: with the default identity, a <code>DELETE</code> event carries only the primary key, so a subscription filtered on <code>user_id=eq.…</code> never matches the delete and the removed row lingers in the list forever. That bug showed up twice — a deleted trip still in the capture picker, a discarded draft still in the Blog tab — before the cause was found.</p>
+      </section>
+
+      <!-- ============================================ 6 -->
+      <section id="writes">
+        <h2><span class="num">06</span>The offline-first write path</h2>
+
+        <p class="lede">This is the heart of the app. Capture never touches the network. It writes to a durable local queue and returns; everything after that is a background drain that can fail and retry forever without losing the note.</p>
+
+        <figure>
+          <div class="fig-scroll">
+            <svg viewBox="0 0 1020 600" role="img" aria-label="Sequence diagram of note capture: the sheet enqueues to AsyncStorage and returns immediately, then background drains upsert the note to Postgres, upload photos to Storage, patch the photo paths, call the tag-note edge function, and write merged tags back — each step surfaced to the feed by Realtime." xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+                <marker id="ah3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+                </marker>
+              </defs>
+
+              <g stroke="currentColor" stroke-width="1.2">
+                <rect x="12" y="26" width="166" height="40" rx="3" fill="var(--accent-soft)"/>
+                <rect x="218" y="26" width="166" height="40" rx="3" fill="var(--accent-soft)"/>
+                <rect x="424" y="26" width="166" height="40" rx="3" fill="var(--teal-soft)"/>
+                <rect x="630" y="26" width="166" height="40" rx="3" fill="var(--teal-soft)"/>
+                <rect x="836" y="26" width="172" height="40" rx="3" fill="var(--teal-soft)"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="95" y="51">capture sheet</text>
+                <text x="301" y="51">AsyncStorage</text>
+                <text x="507" y="51">Postgres</text>
+                <text x="713" y="51">Storage</text>
+                <text x="922" y="51">edge fn + Claude</text>
+              </g>
+
+              <g stroke="currentColor" stroke-opacity="0.28" stroke-dasharray="3 5">
+                <line x1="95" y1="70" x2="95" y2="486"/>
+                <line x1="301" y1="70" x2="301" y2="486"/>
+                <line x1="507" y1="70" x2="507" y2="486"/>
+                <line x1="713" y1="70" x2="713" y2="486"/>
+                <line x1="922" y1="70" x2="922" y2="486"/>
+              </g>
+
+              <g stroke="currentColor" stroke-width="1.3" marker-end="url(#ah3)" fill="none">
+                <line x1="95"  y1="112" x2="297" y2="112"/>
+                <line x1="507" y1="200" x2="99"  y2="200"/>
+                <line x1="95"  y1="290" x2="503" y2="290"/>
+                <line x1="95"  y1="378" x2="918" y2="378"/>
+                <line x1="918" y1="422" x2="99"  y2="422"/>
+                <line x1="507" y1="466" x2="99"  y2="466"/>
+              </g>
+              <g stroke="var(--accent)" stroke-width="1.3" marker-end="url(#ah3a)" fill="none">
+                <line x1="297" y1="146" x2="99"  y2="146" stroke-dasharray="4 3"/>
+                <line x1="95"  y1="246" x2="709" y2="246"/>
+                <line x1="95"  y1="334" x2="503" y2="334"/>
+              </g>
+
+              <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor">
+                <text x="106" y="105">1 · enqueue(PendingNote) — offline_id minted on device</text>
+                <text x="106" y="139" fill="var(--accent)">2 · sheet closes, feed shows a pending card (&lt; 50 ms)</text>
+                <text x="106" y="171" opacity="0.55">— drainAll(): on mount, on reconnect, on foreground —</text>
+                <text x="106" y="193">3 · upsert(notes, onConflict: offline_id, ignoreDuplicates)</text>
+                <text x="106" y="228">4 · Realtime INSERT → pending card becomes a real note</text>
+                <text x="106" y="239" fill="var(--accent)">5 · resize to 1200 px, upload {uid}/{noteId}/{i}.jpg</text>
+                <text x="106" y="327" fill="var(--accent)">6 · patch notes.photo_urls with storage paths</text>
+                <text x="106" y="371">7 · invoke tag-note (Bearer JWT) for every pending note</text>
+                <text x="106" y="450">8 · {category, place_name, city} → mergeTags → write, status = complete</text>
+                <text x="106" y="494">9 · Realtime UPDATE → the card retags itself in place</text>
+              </g>
+
+              <rect x="12" y="516" width="996" height="66" rx="3" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.35" stroke-width="1"/>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">
+                <text x="30" y="540">Offline: steps 1–2 still complete. Everything below stays queued in AsyncStorage and retries — each</text>
+                <text x="30" y="558">drain is idempotent, so a partial run costs nothing. Photo uploads give up after 5 attempts and the</text>
+                <text x="30" y="576">note card renders "⚠ N photos failed" rather than blocking the note itself.</text>
+              </g>
+            </svg>
+          </div>
+          <figcaption><b>Fig 3</b>Amber steps are the photo path, which runs on its own queue at its own pace. The note row exists in Postgres before its photos do — that ordering is what lets a note with photos be captured with no signal at all.</figcaption>
+        </figure>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>A client-minted <code>offline_id</code> with a unique constraint, instead of server-assigned ids</h5>
+          <dl>
+            <dt>How</dt><dd><code>expo-crypto</code> mints a UUID before the note is queued. <code>notes.offline_id</code> is <code>not null unique</code>, and the drain writes with <code>upsert(row, { onConflict: 'offline_id', ignoreDuplicates: true })</code>.</dd>
+            <dt>Why</dt><dd>It makes the drain <strong>idempotent by construction</strong>. A drain that uploads a note and then dies before removing it from the queue is harmless: the next drain re-sends it and the database ignores the duplicate. No de-duplication logic, no "did it commit?" ambiguity, no tombstones.</dd>
+            <dt>Cost</dt><dd>Two identities per note. The photo queue has to key against either <code>offline_note_id</code> or the database <code>id</code> depending on which exists yet, which is the messiest part of <code>photoUploadService</code>.</dd>
+          </dl>
+        </div>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>Two separate queues, not one</h5>
+          <dl>
+            <dt>Alternatives</dt><dd>A single queue with an item type; upload photos synchronously before saving the note (the original design).</dd>
+            <dt>Why</dt><dd>Text and photos have different failure profiles. A note is a few hundred bytes that either lands or does not; a photo is hundreds of kilobytes that may fail repeatedly on a weak connection. Coupling them meant a photo note could not be captured offline at all, and the capture sheet blocked on upload. Separating them let capture return instantly and gave photos their own retry budget (<code>MAX_ATTEMPTS = 5</code>) and their own UI state.</dd>
+            <dt>Cost</dt><dd><code>drainPhotoUploads</code> has genuinely tricky group-resolution logic: a note's <code>photo_urls</code> is patched only once <em>every</em> photo in its group has either succeeded this run or exhausted its attempts, so a half-uploaded note never renders a partial strip.</dd>
+          </dl>
+        </div>
+
+        <h3>The feed is a merge, not a query</h3>
+        <p><code>useNotes</code> returns <code>FeedItem[]</code> — a union of <code>{ kind: 'note' }</code> from Postgres and <code>{ kind: 'pending' }</code> from the local queue. Pending items whose <code>offline_id</code> already exists in the server rows are dropped, so a note visibly promotes from local to synced without flicker or duplication. The merged list sorts on <code>occurred_at ?? captured_at</code>, so a photo's EXIF capture time — which can be weeks before the note was typed — places the note where the experience actually happened.</p>
+      </section>
+
+      <!-- ============================================ 7 -->
+      <section id="photos">
+        <h2><span class="num">07</span>The photo pipeline</h2>
+
+        <p>Photos are the only large binary the app handles, and their storage model was rewritten once, under pressure, after a security audit. That rewrite is the most instructive change in the codebase.</p>
+
+        <p>Originally the <code>photos</code> bucket was public: upload, call <code>getPublicUrl</code>, store the URL in <code>notes.photo_urls</code>, render it. Simple, fast, and wrong — the SELECT policy that made public URLs work also backs the storage <em>list</em> API. Anyone holding the anon key, which ships inside the app binary, could enumerate the bucket root to get every user's UUID folder, then every note id, then every filename.</p>
+
+        <figure>
+          <div class="fig-scroll">
+            <svg viewBox="0 0 960 340" role="img" aria-label="Before and after the storage lockdown: previously any holder of the anon key could list the whole bucket and the database stored public URLs; now the database stores bucket-relative paths and only the owner can mint a short-lived signed URL." xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+                <marker id="ah4d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--danger)"/>
+                </marker>
+                <marker id="ah4t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--teal)"/>
+                </marker>
+              </defs>
+
+              <text x="16" y="24" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="0.1em" fill="var(--danger)">BEFORE — MIGRATION 007</text>
+
+              <g stroke="var(--danger)" stroke-width="1.2" fill="var(--danger-soft)">
+                <rect x="16" y="40" width="176" height="52" rx="3"/>
+                <rect x="300" y="40" width="200" height="52" rx="3"/>
+                <rect x="608" y="40" width="200" height="52" rx="3"/>
+                <rect x="300" y="110" width="200" height="38" rx="3"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="104" y="62">anyone with the</text>
+                <text x="104" y="78">anon key</text>
+                <text x="400" y="62">storage.objects SELECT</text>
+                <text x="400" y="78">TO public</text>
+                <text x="708" y="62">every user's folder,</text>
+                <text x="708" y="78">note ids, filenames</text>
+                <text x="400" y="134">DB stores a public URL</text>
+              </g>
+              <g stroke="var(--danger)" stroke-width="1.3" marker-end="url(#ah4d)" fill="none">
+                <line x1="192" y1="66" x2="296" y2="66"/>
+                <line x1="500" y1="66" x2="604" y2="66"/>
+              </g>
+              <text x="244" y="58" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" text-anchor="middle" opacity="0.75">list</text>
+
+              <line x1="16" y1="176" x2="944" y2="176" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
+
+              <text x="16" y="206" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="0.1em" fill="var(--teal)">AFTER — MIGRATION 025</text>
+
+              <g stroke="var(--teal)" stroke-width="1.2" fill="var(--teal-soft)">
+                <rect x="16" y="222" width="176" height="52" rx="3"/>
+                <rect x="300" y="222" width="200" height="52" rx="3"/>
+                <rect x="608" y="222" width="200" height="52" rx="3"/>
+                <rect x="300" y="292" width="200" height="38" rx="3"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="104" y="244">the owner's app,</text>
+                <text x="104" y="260">signed in</text>
+                <text x="400" y="244">private bucket, SELECT</text>
+                <text x="400" y="260">scoped to own folder</text>
+                <text x="708" y="244">signed URL,</text>
+                <text x="708" y="260">60 min (7 days on export)</text>
+                <text x="400" y="316">DB stores a bucket path</text>
+              </g>
+              <g stroke="var(--teal)" stroke-width="1.3" marker-end="url(#ah4t)" fill="none">
+                <line x1="192" y1="248" x2="296" y2="248"/>
+                <line x1="500" y1="248" x2="604" y2="248"/>
+              </g>
+              <text x="244" y="240" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" text-anchor="middle" opacity="0.75">sign</text>
+
+              <g stroke="var(--danger)" stroke-width="1.3" stroke-dasharray="5 4" fill="none">
+                <line x1="104" y1="292" x2="104" y2="316"/>
+              </g>
+              <text x="118" y="312" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--danger)">anon: 400, and nothing to list</text>
+            </svg>
+          </div>
+          <figcaption><b>Fig 4</b>The fix changed what the database stores, not just what the policy allows. A public URL is a durable capability handed out with the row; a bucket path is an identifier that means nothing without an authenticated signer. Flipping the bucket to private was also required — policies alone do not stop <code>/object/public/…</code> from serving bytes.</figcaption>
+        </figure>
+
+        <p>The rewrite touched every read path, so it is centralised in two files:</p>
+
+        <ul class="plain">
+          <li><strong><code>photoRefs.ts</code></strong> — pure. <code>toStoragePath()</code> normalises anything the database might hold: a bare path, a path with the cover photo's <code>?v=</code> cache-buster, or a legacy <code>/object/public/photos/…</code> URL written before the lockdown. Legacy rows were never rewritten; every read path normalises instead, and only paths are ever written now.</li>
+          <li><strong><code>signedPhotoUrls.ts</code></strong> — the signer. Batches up to 100 paths per request, caches results in memory keyed by the <em>reference</em> rather than the path (so the cover's cache-buster still busts the cache), treats a URL as expired five minutes early so it never dies mid-render, and returns a map containing only what resolved. A photo that cannot be signed is simply absent — callers render a placeholder. A missing photo is never a thrown error.</li>
+        </ul>
+
+        <p>Two TTLs, chosen for different threat models: <strong>60 minutes</strong> for in-app rendering, because a leaked URL is valid until it expires; <strong>7 days</strong> for exported Markdown and HTML, because a shared file is read outside the app and its images must outlive the session, but a forwarded export should not become a permanent handle. The cache is cleared on <code>SIGNED_OUT</code> so one user's URLs never survive into the next user's session on a shared device.</p>
+
+        <p>Uploads are resized to a 1200 px longest edge and re-encoded as JPEG at 0.75 quality before leaving the device. Paths are deterministic — <code>{userId}/{noteId}/{index}.jpg</code>, and <code>{userId}/trip-covers/{tripId}.jpg</code> for covers with <code>upsert: true</code>, so replacing a cover overwrites rather than orphaning. The first path segment being the user id is what makes the storage RLS policies expressible at all: <code>(storage.foldername(name))[1] = auth.uid()::text</code>.</p>
+      </section>
+
+      <!-- ============================================ 8 -->
+      <section id="location">
+        <h2><span class="num">08</span>Location provenance</h2>
+
+        <p class="lede">The subtlest subsystem in the app, and the one that exists because of a real, repeated bug: a note typed up about Paris, at home in California, was tagged "Mountain View" — because that is where the phone was when the words were written.</p>
+
+        <p>The fix was not better GPS. It was to stop treating a coordinate as a fact and start treating it as a <em>claim with a source</em>. <code>notes.location_source</code> records which of four things produced the coordinates, and every downstream rule keys off it.</p>
+
+        <figure>
+          <div class="fig-scroll">
+            <svg viewBox="0 0 980 400" role="img" aria-label="Location resolution: EXIF GPS is trusted outright; device GPS is accepted only if within 200 km of a trip anchor, otherwise snapped to the nearest anchor and marked inferred; a typed location always wins." xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+
+              <rect x="14" y="150" width="118" height="44" rx="3" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"/>
+              <text x="73" y="177" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">new note</text>
+
+              <g fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3">
+                <rect x="176" y="146" width="150" height="52" rx="3"/>
+                <rect x="384" y="146" width="150" height="52" rx="3"/>
+                <rect x="592" y="146" width="164" height="52" rx="3"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" text-anchor="middle">
+                <text x="251" y="168">photo carries</text>
+                <text x="251" y="184">EXIF GPS?</text>
+                <text x="459" y="168">device GPS</text>
+                <text x="459" y="184">fix available?</text>
+                <text x="674" y="168">within 200 km of</text>
+                <text x="674" y="184">a trip anchor?</text>
+              </g>
+
+              <g stroke="currentColor" stroke-width="1.2" marker-end="url(#ah5)" fill="none">
+                <line x1="132" y1="172" x2="172" y2="172"/>
+                <path d="M 251 146 L 251 78 L 380 78"/>
+                <line x1="326" y1="172" x2="380" y2="172"/>
+                <path d="M 459 198 L 459 300 L 588 300"/>
+                <line x1="534" y1="172" x2="588" y2="172"/>
+                <path d="M 674 146 L 674 78 L 800 78"/>
+                <path d="M 674 198 L 674 236 L 800 236"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity="0.7">
+                <text x="258" y="108">yes</text>
+                <text x="340" y="166">no</text>
+                <text x="466" y="230">no</text>
+                <text x="548" y="166">yes</text>
+                <text x="681" y="108">yes</text>
+                <text x="681" y="222">no</text>
+              </g>
+
+              <g stroke-width="1.3">
+                <rect x="800" y="56" width="166" height="44" rx="3" fill="var(--teal-soft)" stroke="var(--teal)"/>
+                <rect x="800" y="214" width="166" height="44" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
+                <rect x="588" y="278" width="166" height="44" rx="3" fill="var(--surface-2)" stroke="currentColor"/>
+                <rect x="380" y="56" width="140" height="44" rx="3" fill="var(--teal-soft)" stroke="var(--teal)"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="450" y="83">source = exif</text>
+                <text x="883" y="83">source = gps</text>
+                <text x="883" y="230">snap to anchor,</text>
+                <text x="883" y="246">source = inferred</text>
+                <text x="671" y="306">source = null</text>
+              </g>
+
+              <rect x="14" y="342" width="952" height="44" rx="3" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">
+                <text x="32" y="360">Anchors = the trip's geocoded destinations + coordinates of its exif/manual notes only. Never gps notes —</text>
+                <text x="32" y="376">a wrong note must not vouch for the next wrong fix. Typing the field at any point ⇒ source = manual, which overrides all of the above.</text>
+              </g>
+            </svg>
+          </div>
+          <figcaption><b>Fig 5</b>Trust is ordered: <code>manual</code> &gt; <code>exif</code> &gt; plausible <code>gps</code> &gt; <code>inferred</code>. Plausibility is a 200 km haversine radius around any anchor — loose enough for a day trip out of the city, tight enough to catch a different continent. With no anchors at all, <code>isPlausible</code> returns true: no judgment is better than a wrong one.</figcaption>
+        </figure>
+
+        <p>The same rules run in three places. At <strong>capture</strong>, <code>resolveAutoLocation</code> decides live in the sheet, so the user sees the corrected location before saving and can override it. At <strong>launch</strong>, two idempotent background passes fix history: <code>sweepNoteLocations</code> re-judges existing <code>gps</code> and legacy null-source notes against their trip's anchors, then <code>backfillPlaceNames</code> resolves missing place names. They run strictly in that order, so no geocode is spent on coordinates the sweep is about to rewrite.</p>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>Place-name precedence: manual &gt; AI-extracted venue &gt; geocoder label</h5>
+          <dl>
+            <dt>Problem</dt><dd>The device reverse-geocoder returns <code>name ?? street ?? city</code> — usually a street, not the venue. Claude's <code>tag-note</code> pass <em>does</em> extract the real venue from the note text ("dinner at Ichiran"), but the original merge rule (<code>existing ?? suggestion</code>) let the street label pre-empt it.</dd>
+            <dt>Fix</dt><dd><code>mergeTags</code> now returns the user's typed name when <code>location_source === 'manual'</code>, otherwise prefers the AI venue over the geocoder label.</dd>
+            <dt>Why it matters</dt><dd><code>place_name</code> is the dedupe key for the community layer and the only field published from it. Street labels would neither dedupe nor read as places on the shared map.</dd>
+          </dl>
+        </div>
+
+        <div class="risk">
+          <span class="tag">Known limitation, documented in code</span>
+          <p>A sweep rewrite to <code>inferred</code> is one-way. The note leaves the candidate set and is never re-evaluated, so if the anchor set was incomplete at the time — one destination failed to geocode while others succeeded and got cached — a note can be corrected to a plausible-but-wrong anchor permanently. Recovery is a manual edit, which marks it <code>manual</code>.</p>
+        </div>
+      </section>
+
+      <!-- ============================================ 9 -->
+      <section id="ai">
+        <h2><span class="num">09</span>The AI layer</h2>
+
+        <p>Three Deno edge functions. The client holds no model key and no service role key, so every AI call is shaped as a function invocation. The division of labour between them is a cost decision as much as a capability one.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Function</th><th>Model</th><th>Shape</th><th>When it fails</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>detect-intent</code></td>
+                <td>Haiku 4.5, 60 max tokens</td>
+                <td>Synchronous. Classifies a voice transcript as save vs. search.</td>
+                <td>Client races it against a 6 s timeout and falls back to <code>save</code>. Never blocks capture.</td>
+              </tr>
+              <tr>
+                <td><code>tag-note</code></td>
+                <td>Haiku 4.5, 120 max tokens</td>
+                <td>Synchronous. Returns category, venue, city as JSON.</td>
+                <td>Non-200 leaves the note <code>tagging_status = 'pending'</code>; the next drain retries. The note is already saved.</td>
+              </tr>
+              <tr>
+                <td><code>generate-blog</code></td>
+                <td>Opus 4.8, vision, 16 000 max tokens</td>
+                <td>Asynchronous. Inserts a <code>generating</code> row, returns its id, continues in the background.</td>
+                <td>Writes <code>error</code> or <code>insufficient</code> to the row. Three independent timeouts back it up.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>Verify the JWT in the function body, not only at the gateway</h5>
+          <dl>
+            <dt>What was wrong</dt><dd><code>tag-note</code> and <code>detect-intent</code> originally checked only that an <code>Authorization</code> header <em>existed</em>. <code>Bearer hello</code> passed. They were safe only because of the platform's <code>verify_jwt</code> dashboard default — a setting no function asserted, and one deploy with <code>--no-verify-jwt</code> would have published an unauthenticated proxy to the Anthropic key.</dd>
+            <dt>Fix</dt><dd><code>_shared/auth.ts</code> → <code>requireUser(req)</code> performs a real <code>admin.auth.getUser(token)</code> and returns a ready-to-return 401 on failure, never a partial result. <code>generate-blog</code> already did this and goes further: it re-reads the trip's <code>user_id</code> and rejects with 403 unless it matches the token's subject, because the service-role client it uses bypasses RLS entirely.</dd>
+            <dt>Principle</dt><dd>A guarantee that lives in a dashboard toggle is not a guarantee. It belongs in code that ships with the function.</dd>
+          </dl>
+        </div>
+
+        <h3>Blog generation: a long job on a platform with a wall clock</h3>
+
+        <p>A photo-rich trip is far too much work for one HTTP response. The function inserts the row, returns the id in milliseconds, and hands the real work to <code>EdgeRuntime.waitUntil()</code>. The client never polls — it subscribes to <code>blog_posts</code> over Realtime and the card flips from <em>Generating…</em> to <em>Ready to review</em> on its own.</p>
+
+        <p>The vision pass is where the cost lives, and it is bounded on three axes. Photos are downloaded with the service role, decoded, resized to a 1536 px longest edge and re-encoded at JPEG 80 — roughly 3× cheaper in image tokens than full resolution, and ample for judging composition. At most <strong>24</strong> photos are sent as images; the rest are listed by id only, so they stay selectable but unjudged. Preprocessing runs concurrently in batches of 5, which keeps peak memory to five decoded images while cutting wall-clock enough that a 68-photo trip finished in ~54 s of a 140 s budget.</p>
+
+        <figure>
+          <div class="fig-scroll">
+            <svg viewBox="0 0 940 330" role="img" aria-label="Blog post state machine: a generating row resolves to draft, insufficient, or error; draft can be published and unpublished; three independent timers guarantee generating never sticks." xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="ah6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+
+              <circle cx="40" cy="150" r="7" fill="currentColor"/>
+              <line x1="47" y1="150" x2="118" y2="150" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah6)"/>
+              <text x="52" y="142" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity="0.7">invoke</text>
+
+              <rect x="124" y="126" width="150" height="48" rx="24" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+              <text x="199" y="156" font-family="JetBrains Mono, monospace" font-size="12" fill="currentColor" text-anchor="middle">generating</text>
+
+              <g stroke="currentColor" stroke-width="1.2" marker-end="url(#ah6)" fill="none">
+                <path d="M 274 138 L 340 138 L 340 62 L 428 62"/>
+                <line x1="274" y1="150" x2="428" y2="150"/>
+                <path d="M 274 162 L 340 162 L 340 244 L 428 244"/>
+                <line x1="590" y1="144" x2="676" y2="144"/>
+              </g>
+              <path d="M 676 162 L 590 162" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah6)"/>
+
+              <g stroke-width="1.3">
+                <rect x="434" y="38" width="156" height="48" rx="24" fill="var(--teal-soft)" stroke="var(--teal)"/>
+                <rect x="434" y="126" width="156" height="48" rx="24" fill="var(--surface-2)" stroke="currentColor"/>
+                <rect x="434" y="220" width="156" height="48" rx="24" fill="var(--surface-2)" stroke="currentColor"/>
+                <rect x="682" y="120" width="156" height="48" rx="24" fill="var(--teal-soft)" stroke="var(--teal)"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="12" fill="currentColor" text-anchor="middle">
+                <text x="512" y="68">draft</text>
+                <text x="512" y="156">insufficient</text>
+                <text x="512" y="250">error</text>
+                <text x="760" y="150">published</text>
+              </g>
+
+              <g font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity="0.72">
+                <text x="348" y="56">a post came back</text>
+                <text x="348" y="144">model judged the notes too thin</text>
+                <text x="348" y="238">exception · 140 s abort · cron sweep</text>
+                <text x="600" y="136">publish</text>
+                <text x="600" y="180">unpublish</text>
+              </g>
+
+              <rect x="14" y="286" width="912" height="34" rx="3" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.35"/>
+              <text x="32" y="308" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">Three timers, none trusting the others: 140 s AbortController in the worker · 3 min client-side isStaleGenerating · 5 min pg_cron backstop.</text>
+            </svg>
+          </div>
+          <figcaption><b>Fig 6</b><code>insufficient</code> is a first-class status, not an error. When the notes are too thin to write from honestly, the model is instructed to return <code>{"insufficient": true, "reason"}</code> instead of padding, and the reason is shown verbatim as a calm message. Refusing to fabricate is a designed outcome with its own row state.</figcaption>
+        </figure>
+
+        <p>The three timers matter because they cover different failures. The <code>AbortController</code> covers a slow Anthropic response. The client's <code>isStaleGenerating</code> (3 minutes) covers a worker killed mid-flight, and offers retry. The pg_cron job (every 5 minutes, failing anything <code>generating</code> older than 5 minutes) covers the case where the client never comes back at all — safely beyond any legitimate run, so it can never kill a live generation.</p>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>Photo ids are opaque storage paths, and the model's output is filtered against a known set</h5>
+          <dl>
+            <dt>How</dt><dd>Each image in the prompt is labelled with its storage path and the model is told these are opaque identifiers, not web addresses. On the way back, <code>keepKnown()</code> discards any id that was not actually offered.</dd>
+            <dt>Why</dt><dd>A hallucinated path would fail to sign on the client anyway, but a null cover is a better outcome than a permanently broken hero image. The same defensiveness runs on both sides of the boundary: the function does a coarse structural check on the itinerary, and the client's <code>parseItinerary</code> re-narrows every field, dropping malformed stops and empty days.</dd>
+          </dl>
+        </div>
+
+        <p>Before spending a token, a free client-side gate runs: at least 3 notes and 80 characters of text. It is deliberately lenient — the model's own judgment is the real quality check.</p>
+
+        <div class="note">
+          <span class="tag">Drift worth noting</span>
+          <p>The original spec named <code>claude-sonnet-4-6</code> for all AI work and Cohere embeddings for semantic search. Shipped reality: Haiku for the two cheap classification jobs, Opus with vision for the one expensive per-trip job, and no embeddings at all. <code>pgvector</code> is enabled by migration 001 and has never been used.</p>
+        </div>
+      </section>
+
+      <!-- ============================================ 10 -->
+      <section id="community">
+        <h2><span class="num">10</span>The community layer</h2>
+
+        <p>The only data that crosses from private to public. Completing a trip aggregates its named, categorised places into <code>public_places</code> — an anonymised table holding no <code>user_id</code>, no timestamps of visit, and no note prose. Just place identity, running-average coordinates, visit and rating counts, and a category tally.</p>
+
+        <figure>
+          <div class="fig-scroll">
+            <svg viewBox="0 0 980 330" role="img" aria-label="Community aggregation: completing a trip fires a SECURITY DEFINER function that checks the owner's opt-out, filters eligible notes, skips any already in the contributions ledger, and updates public_places while recording a ledger row." xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="ah7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+
+              <g stroke="currentColor" stroke-width="1.2" fill="var(--accent-soft)">
+                <rect x="14" y="52" width="172" height="52" rx="3"/>
+                <rect x="14" y="132" width="172" height="52" rx="3"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="100" y="74">trip: active</text>
+                <text x="100" y="90">→ completed</text>
+                <text x="100" y="154">note UPDATE on a</text>
+                <text x="100" y="170">completed trip</text>
+              </g>
+
+              <g stroke="currentColor" stroke-width="1.2" marker-end="url(#ah7)" fill="none">
+                <path d="M 186 78 L 236 78 L 236 132 L 268 132"/>
+                <path d="M 186 158 L 236 158 L 236 148 L 268 148"/>
+              </g>
+
+              <rect x="272" y="104" width="212" height="88" rx="3" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.3"/>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="378" y="130">aggregate_trip_</text>
+                <text x="378" y="146">for_community()</text>
+                <text x="378" y="168" opacity="0.65">SECURITY DEFINER</text>
+                <text x="378" y="182" opacity="0.65">add-only, idempotent</text>
+              </g>
+
+              <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity="0.75">
+                <text x="500" y="82">gate 1 · owner opted out? → return</text>
+                <text x="500" y="102">gate 2 · category ∈ food/stay/activity/shopping</text>
+                <text x="500" y="122">gate 3 · place_name non-empty</text>
+                <text x="500" y="142">gate 4 · note_id not already in the ledger</text>
+              </g>
+              <line x1="484" y1="148" x2="496" y2="148" stroke="currentColor" stroke-width="1.2"/>
+
+              <g stroke="currentColor" stroke-width="1.2" marker-end="url(#ah7)" fill="none">
+                <path d="M 378 192 L 378 226 L 500 226"/>
+                <path d="M 378 192 L 378 288 L 500 288"/>
+              </g>
+
+              <g stroke-width="1.3">
+                <rect x="504" y="204" width="240" height="44" rx="3" fill="var(--teal-soft)" stroke="var(--teal)"/>
+                <rect x="504" y="266" width="240" height="44" rx="3" fill="var(--surface-2)" stroke="currentColor"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" text-anchor="middle">
+                <text x="624" y="231">public_places — public read</text>
+                <text x="624" y="293">contributions ledger — no read</text>
+              </g>
+
+              <rect x="766" y="204" width="200" height="106" rx="3" fill="none" stroke="var(--danger)" stroke-width="1.2" stroke-dasharray="4 3"/>
+              <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--danger)">
+                <text x="782" y="226">never crosses:</text>
+                <text x="782" y="246">user_id</text>
+                <text x="782" y="264">note text</text>
+                <text x="782" y="282">visit timestamps</text>
+                <text x="782" y="300">trip identity</text>
+              </g>
+
+              <text x="14" y="26" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="0.1em" fill="currentColor" opacity="0.55">TWO TRIGGERS, ONE FUNCTION</text>
+            </svg>
+          </div>
+          <figcaption><b>Fig 7</b>The second trigger exists because tagging is asynchronous: <code>tag-note</code> can fill in a <code>place_name</code> <em>after</em> the trip has already completed and the first trigger has already run. Because the function is add-only and ledger-guarded, re-running it on every relevant note update is free of double-counting.</figcaption>
+        </figure>
+
+        <div class="decision">
+          <span class="tag">Decision</span>
+          <h5>A separate, unreadable ledger for idempotency instead of a computed diff</h5>
+          <dl>
+            <dt>How</dt><dd><code>public_place_contributions</code> holds one row per contributing note, with <code>note_id</code> unique. RLS is enabled with <strong>no policies at all</strong> — it is fully unreachable by <code>anon</code> and <code>authenticated</code>; only the definer function, running as table owner, touches it.</dd>
+            <dt>Why</dt><dd>It makes "count this note once, ever" a database constraint rather than application care. A trip can be re-completed, a note re-tagged, a backfill re-run — the counts stay correct. And because the ledger is the one structure linking a private note to a public place, it must never be readable; RLS-with-no-policies is the strongest available statement of that.</dd>
+            <dt>Cost</dt><dd>The aggregate is <strong>add-only</strong>. Deleting a note removes its ledger row but does not decrement <code>public_places</code>, so counts drift upward over time. Accepted for V1.</dd>
+          </dl>
+        </div>
+
+        <p>Place identity is a normalised key — lowercased, trimmed, whitespace-collapsed name and city joined by <code>|</code> — computed by an <code>immutable</code> SQL function that is also used directly by the SQL tests, so the tests exercise the same code the trigger does. Coordinates accumulate as a running average with a <code>coord_count</code>, so places gain precision as more people record them. The <code>public_destinations</code> view is declared <code>security_invoker = on</code> so it honours the underlying table's RLS rather than the view owner's rights.</p>
+      </section>
+
+      <!-- ============================================ 11 -->
+      <section id="security">
+        <h2><span class="num">11</span>Security posture</h2>
+
+        <p>The trust model in one line: <strong>the anon key ships inside the app binary, so anything the anon role can do, a stranger can do.</strong> Every policy is written against that assumption. A pre-beta audit in August 2026 found three places where it had not been, all fixed in one pass before any tester data existed.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Severity</th><th>Finding</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="pill gap">Critical</span></td>
+                <td><code>photos</code> bucket had <code>TO public</code> SELECT, which backs the storage <em>list</em> API — the anon key could enumerate every user's folder and download their photos.</td>
+                <td>Migration 025: owner-scoped SELECT, bucket flipped private, client rewritten to store paths and sign at render time.</td>
+              </tr>
+              <tr>
+                <td><span class="pill gap">High</span></td>
+                <td><code>profiles</code> SELECT was <code>using (true)</code> with no role clause — anon could dump every UUID, real name and signup time, which chains with the above into targeted deanonymisation.</td>
+                <td>Migration 025: own-row only. Nothing in V1 reads another user's profile; the aggregate function is <code>SECURITY DEFINER</code> and unaffected.</td>
+              </tr>
+              <tr>
+                <td><span class="pill part">Medium</span></td>
+                <td><code>tag-note</code> and <code>detect-intent</code> checked only that an <code>Authorization</code> header existed.</td>
+                <td><code>_shared/auth.ts</code> with a real token verification, asserted in the function body.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Both database findings predated the audit and had the same origin: they were written permissively for a public-blog feature that was later deferred to V2. <strong>The feature never arrived; the permissions stayed.</strong> That is the generalisable lesson — permissions granted for planned functionality outlive the plan, and nothing in the system notices.</p>
+
+        <p>Secret handling is deliberately narrow. <code>EXPO_PUBLIC_*</code> variables are compiled into the bundle and treated as public. The service role key exists in exactly two places: the local <code>.env</code>, which is gitignored, and the Supabase function environment. The GitHub Actions keep-alive workflow carries a comment stating it must never be added there.</p>
+      </section>
+
+      <!-- ============================================ 12 -->
+      <section id="build">
+        <h2><span class="num">12</span>Build, release and operations</h2>
+
+        <h4>Builds</h4>
+        <p>EAS with three profiles — <code>development</code> (dev client, internal), <code>preview</code> (internal distribution), <code>production</code> (auto-incrementing, remote version source). Local iOS builds run through <code>npm run ios</code>, which does <code>pod install</code>, then a patch script, then <code>expo run:ios --no-install</code>.</p>
+
+        <p><code>scripts/patch-ios-pbxproj.js</code> is the kind of thing worth documenting rather than hiding: an idempotent post-prebuild patcher that fixes path-with-spaces breakage in the generated Xcode project. The project directory contains spaces, and <code>expo prebuild</code> writes shell invocations that do not survive them. Because <code>ios/</code> is regenerated and gitignored, the fix has to be a script rather than a committed edit.</p>
+
+        <h4>Schema changes</h4>
+        <p>Migrations are applied through the Supabase MCP server rather than the CLI, then TypeScript types are regenerated and committed alongside. The workflow is written down in <code>supabase/README.md</code> because it is a two-step that is easy to half-do — a migration without regenerated types compiles until it doesn't.</p>
+
+        <h4>Keeping the lights on</h4>
+        <p>One GitHub Actions workflow, every three days: a <code>curl</code> against <code>public_places</code> using the anon key. Supabase free-tier projects auto-pause after ~7 days idle, and the failure mode is specific and bad — <em>a tester's app silently stops saving notes mid-trip, and their trip cannot be repeated.</em> It targets the one genuinely public table so no elevated credential is needed, and uses <code>curl -f</code> so a paused project turns the job red instead of passing silently.</p>
+
+        <h4>Tests</h4>
+        <p>362 tests across 40 suites, all passing, <code>jest-expo</code> preset. The distribution follows the layering: heavy coverage of pure helpers (merge rules, distance maths, markdown, ranking, validation), mocked-Supabase coverage of services, render tests for the components with real conditional logic. SQL-level behaviour has its own test files under <code>supabase/tests/</code>. There is no E2E layer; device QA is manual and recorded in <code>docs/progress.md</code>.</p>
+
+        <h4>Documentation as an artifact</h4>
+        <p>Every feature has a spec and a plan committed under <code>docs/superpowers/</code> — 21 specs and 34 plans across the project's life — and <code>docs/progress.md</code> is a 771-line running record of decisions, bugs found in QA, and deferrals with reasons. Most of the "why" reconstructed in this paper came from there rather than from the code.</p>
+      </section>
+
+      <!-- ============================================ 13 -->
+      <section id="failure">
+        <h2><span class="num">13</span>How it behaves when things break</h2>
+
+        <p>A useful way to read an architecture is to ask what happens when each dependency fails. Notebound answers this unusually well for the capture path and unevenly elsewhere.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Failure</th><th>Behaviour</th><th>Recovery</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>No network at capture</td><td>Note saves locally and appears in the feed immediately, photos included</td><td>Automatic on reconnect, foreground, or next launch</td></tr>
+              <tr><td>Photo upload fails repeatedly</td><td>Note is unaffected; card shows <code>⚠ N photos failed</code></td><td>Stops after 5 attempts; needs a manual re-add</td></tr>
+              <tr><td><code>tag-note</code> down</td><td>Note keeps <code>tagging_status = 'pending'</code>, shows without a category</td><td>Retried on every subsequent drain</td></tr>
+              <tr><td><code>detect-intent</code> down or slow</td><td>6 s timeout, falls back to <code>save</code></td><td>None needed — the fallback is the common case</td></tr>
+              <tr><td><code>generate-blog</code> worker killed</td><td>Row would stick on <code>generating</code></td><td>Client marks it stale at 3 min; pg_cron fails it at 5 min</td></tr>
+              <tr><td>Geocoder unavailable</td><td>Location field keeps the typed label, drops the pin rather than storing bad coordinates</td><td>Backfill retries on the next launch</td></tr>
+              <tr><td>Storage unreachable at render</td><td>Signing returns nothing for that photo; a placeholder renders. Failures are never cached</td><td>Next render retries</td></tr>
+              <tr><td>Supabase project paused</td><td>Everything server-side stops; capture still works and queues</td><td>Keep-alive job prevents it; queued notes drain on resume</td></tr>
+              <tr><td>Anthropic outage</td><td>Tagging and blog generation stall; notes and photos unaffected</td><td>Automatic for tagging, manual retry for blogs</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>The pattern is consistent and intentional: <strong>the capture path degrades to fully local, and every AI enrichment is optional and retryable.</strong> Nothing the user typed is ever at risk of a network failure.</p>
+      </section>
+
+      <!-- ============================================ 14 -->
+      <section id="gaps">
+        <h2><span class="num">14</span>Where the architecture is thin</h2>
+
+        <p class="lede">An honest paper names what is not built. These are gaps in the shipped system as of this commit, not speculation.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Gap</th><th>State</th><th>Consequence</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>In-app account deletion</td>
+                <td><span class="pill gap">Missing</span></td>
+                <td>App Store Guideline 5.1.1(v) requires it for any app with account creation. Needs a <code>delete-account</code> edge function — the client can never hold the service key. Hard rejection at review.</td>
+              </tr>
+              <tr>
+                <td>Community opt-out</td>
+                <td><span class="pill gap">Orphaned</span></td>
+                <td><code>profiles.contribute_to_community</code> exists, defaults true, and is honoured by the aggregate function — but nothing in <code>src/</code> reads or writes it. The column appears only in generated types. Users contribute by default with no way to decline.</td>
+              </tr>
+              <tr>
+                <td>Search</td>
+                <td><span class="pill gap">Shell</span></td>
+                <td><code>SearchScreen</code> is static placeholder markup. No query runs. <code>pgvector</code> was enabled in migration 001 for semantic search that was never built; the voice intent classifier can return <code>search</code>, and the handler just navigates to the tab.</td>
+              </tr>
+              <tr>
+                <td>Explore moderation</td>
+                <td><span class="pill part">Unresolved</span></td>
+                <td><code>public_places.place_name</code> is user-typed free text shown to other users. Guideline 1.2 requires filtering, reporting and blocking for UGC. The documented decision was to hide Explore for v1.0; the tab is still wired into <code>TAB_CONFIG</code>.</td>
+              </tr>
+              <tr>
+                <td>Rate limiting</td>
+                <td><span class="pill gap">None</span></td>
+                <td><code>generate-blog</code> runs an Opus vision pass at roughly $0.12–0.65 per call with no per-user cap. Any authenticated user can loop it against their own trips.</td>
+              </tr>
+              <tr>
+                <td>Public web layer</td>
+                <td><span class="pill part">Deferred</span></td>
+                <td>"Published" is a local status marker only. There is no web URL for a published post — the export-to-Markdown/HTML share sheet is the entire distribution story. This is the deferral that left the over-permissive policies behind (§11).</td>
+              </tr>
+              <tr>
+                <td>Community counts</td>
+                <td><span class="pill part">Add-only</span></td>
+                <td>Deleting a note leaves its contribution counted. Visit counts drift upward permanently.</td>
+              </tr>
+              <tr>
+                <td>Realtime reducer</td>
+                <td><span class="pill part">Duplicated</span></td>
+                <td>The same insert/update/delete reduction is written out in four hooks. Harmless, but it is the same bug surface copied four times.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Three of these — account deletion, the orphaned opt-out, and the Explore moderation posture — are release blockers rather than architectural debt. The rest are the ordinary residue of a V1 that kept its scope honest.</p>
+      </section>
+
+      <footer>
+        <p>Notebound · React Native 0.81.5 · Expo SDK 54 · React 19.1 · TypeScript strict · Supabase (Postgres, RLS, Storage, Realtime, Edge Functions, pg_cron) · Anthropic Haiku 4.5 &amp; Opus 4.8<br>
+        Verified against <code>main</code> at 9af48af — 362 tests / 40 suites passing, 27 migrations, 3 edge functions.</p>
+      </footer>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>
