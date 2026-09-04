@@ -494,7 +494,7 @@
   <header class="masthead">
     <p class="eyebrow">Architecture paper · verified against <code>main</code> @ 9af48af · 4 Sep 2026</p>
     <h1>Notebound Architecture</h1>
-    <p class="deck">An offline-first travel journal that turns raw captured notes into a written trip. Every layer, and the decision behind it.</p>
+    <p class="deck">An offline-first travel journal that turns raw captured notes into a written trip. Every layer, why it works that way, and what each choice costs.</p>
     <div class="facts">
       <div class="fact"><b>362</b><span>tests, 40 suites</span></div>
       <div class="fact"><b>27</b><span>SQL migrations</span></div>
@@ -510,7 +510,7 @@
     <nav class="rail" aria-label="Sections">
       <p>Contents</p>
       <ol>
-        <li><a href="#forces">The forces</a></li>
+        <li><a href="#forces">Constraints</a></li>
         <li><a href="#context">System context</a></li>
         <li><a href="#client">Client shell</a></li>
         <li><a href="#code">Code layering</a></li>
@@ -531,27 +531,50 @@
 
       <!-- ============================================ 1 -->
       <section id="forces">
-        <h2><span class="num">01</span>The forces that shaped everything</h2>
+        <h2><span class="num">01</span>The constraints that drive everything</h2>
 
         <p class="lede">Notebound is a trip-centric journal. You start a trip, capture notes into it — voice, text, photos — and when the trip ends, Claude writes the trip up as a blog post with an itinerary and the photos it judged strongest.</p>
 
-        <p>Almost every structural decision in this codebase traces back to one of four constraints. They are worth stating first, because they explain choices that would otherwise look arbitrary.</p>
+        <p>Before any of the boxes and arrows, it is worth naming the constraints. Almost every structural decision below falls out of one of four, and without them in mind several of the choices look arbitrary — or worse, over-engineered.</p>
 
         <ul class="plain">
-          <li><strong>The capture moment is unrepeatable.</strong> A note taken on a mountain pass with no signal cannot be re-taken later. Saving must never depend on the network, and never block on it.</li>
-          <li><strong>One developer, no ops.</strong> There is no team to run infrastructure. Anything requiring a server process to be babysat was rejected in favour of managed primitives — Postgres, RLS, triggers, cron, edge functions.</li>
-          <li><strong>Private by default, public by exception.</strong> A travel journal contains where you were and when. The only data that ever leaves the owner's boundary is an anonymised place aggregate, and only after the trip completes.</li>
-          <li><strong>Free-tier economics.</strong> Voice runs on-device (free) rather than a transcription API. Classification runs on Haiku; only the once-per-trip blog spends Opus with vision.</li>
+          <li><strong>The capture moment is unrepeatable.</strong> A note taken on a mountain pass with no signal cannot be re-taken later. So saving must never depend on the network, and must never block on it. That one sentence dictates the entire write path in §06.</li>
+          <li><strong>One developer, no ops.</strong> There is no team to run infrastructure, so anything needing a server process babysat was rejected on principle. Managed primitives only — Postgres, RLS, triggers, cron, edge functions.</li>
+          <li><strong>Private by default, public by exception.</strong> A travel journal is a record of where you were and when, which is about as sensitive as personal data gets. The only thing that ever leaves the owner's boundary is an anonymized place aggregate, and only after the trip completes (§10).</li>
+          <li><strong>Free-tier economics.</strong> Voice runs on-device (free) rather than through a transcription API. Classification runs on Haiku; only the once-per-trip blog spends Opus with vision. Cost per feature was a design input here, not something reckoned with afterwards.</li>
         </ul>
 
-        <p>Read the rest of this paper with those four in mind and the architecture reads as one argument rather than a pile of libraries.</p>
+        <p>Hold those four in mind and the rest reads as one argument rather than a pile of libraries.</p>
+
+        <h3>Numbers to know</h3>
+
+        <p>A handful of constants do most of the load-bearing work in this system. They come up repeatedly below, so they are collected here.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Number</th><th>What it bounds</th><th>Why that value</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><b>200 km</b></td><td>Plausibility radius around a trip anchor before a GPS fix is rejected (§08)</td><td>Loose enough for a day trip out of the city, tight enough to catch a different continent</td></tr>
+              <tr><td><b>5 attempts</b></td><td>Photo upload retry budget before a photo is given up on (§06)</td><td>Enough to ride out a bad connection without retrying forever on a genuinely broken file</td></tr>
+              <tr><td><b>6 s</b></td><td>Client timeout on intent classification before falling back to <code>save</code> (§09)</td><td>Capture must never wait on a model; the fallback is the common case anyway</td></tr>
+              <tr><td><b>24 photos · 1536 px</b></td><td>Vision budget for one blog generation (§09)</td><td>Roughly 3× cheaper in image tokens than full resolution, and ample for judging composition</td></tr>
+              <tr><td><b>1200 px · JPEG 0.75</b></td><td>What a photo is resized to before upload (§07)</td><td>The upload is the slow part of the write path; this is the smallest size that still looks right on a phone</td></tr>
+              <tr><td><b>60 min / 7 days</b></td><td>Signed-URL lifetime in-app vs. in an export (§07)</td><td>Two different threat models — a leaked in-app URL vs. a forwarded export file</td></tr>
+              <tr><td><b>3 min / 5 min</b></td><td>Client stale marker and pg_cron sweeper for a stuck generation (§09)</td><td>Both safely beyond any legitimate run, so neither can kill a live one</td></tr>
+              <tr><td><b>100 paths</b></td><td>Maximum photo paths signed per request (§07)</td><td>One round trip for a whole screen instead of one per image</td></tr>
+              <tr><td><b>~7 days idle</b></td><td>When a free-tier Supabase project auto-pauses (§12)</td><td>Not a choice — a platform limit the keep-alive job exists to dodge</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <!-- ============================================ 2 -->
       <section id="context">
         <h2><span class="num">02</span>System context</h2>
 
-        <p>There are three planes: the device, one Supabase project, and the Anthropic API. Nothing else. There is no backend service of our own, no queue broker, no CDN we configured, no analytics pipeline.</p>
+        <p>Start with the boxes, because there are only three: the device, one Supabase project, and the Anthropic API. That is the entire system. No backend service of our own, no queue broker, no CDN we configured, no analytics pipeline. The interesting part of that list is how much of it a travel journal genuinely does not need — the pressure here is on offline behavior and authorization, not on throughput.</p>
 
         <figure>
           <div class="fig-scroll">
@@ -676,8 +699,8 @@
           <h5>Supabase as the entire backend, not a database with a service in front of it</h5>
           <dl>
             <dt>Alternatives</dt><dd>Firebase; a hand-rolled Node/Postgres API on Fly or Railway; Expo + a serverless API layer.</dd>
-            <dt>Why</dt><dd>Auth, row-level authorization, object storage, change streaming, cron and function hosting arrive as one thing with one connection string. <strong>Authorization lives in the database</strong>, so there is no application tier that can forget to check ownership — the check runs whichever path reaches the row.</dd>
-            <dt>Cost</dt><dd>Real vendor lock-in: RLS policies, triggers, <code>SECURITY DEFINER</code> functions and pg_cron jobs are the application. Free-tier projects auto-pause after ~7 days idle, which required a keep-alive job (§12).</dd>
+            <dt>Why</dt><dd>Auth, row-level authorization, object storage, change streaming, cron and function hosting arrive as one thing behind one connection string. The bigger win is structural: <strong>authorization lives in the database</strong>, so there is no application tier that can forget to check ownership. The check runs whichever path reaches the row — which matters a great deal once there are four write paths (§05).</dd>
+            <dt>Tradeoff</dt><dd>Real vendor lock-in, and not the shallow kind. RLS policies, triggers, <code>SECURITY DEFINER</code> functions and pg_cron jobs <em>are</em> the application; porting off Supabase would mean rewriting the authorization model, not swapping a driver. Free-tier projects also auto-pause after ~7 days idle, which is why there is a keep-alive job (§12).</dd>
           </dl>
         </div>
       </section>
@@ -685,6 +708,8 @@
       <!-- ============================================ 3 -->
       <section id="client">
         <h2><span class="num">03</span>The client shell</h2>
+
+        <p>The client is where the offline constraint actually gets paid for, so it is worth knowing what it is made of before looking at how it behaves.</p>
 
         <p>React Native 0.81.5 on Expo SDK 54, React 19.1, TypeScript in <code>strict</code> mode, New Architecture (Fabric/TurboModules) enabled, iOS deployment target 16.4, bundle <code>com.rutvijdhotey.notebound</code>.</p>
 
@@ -695,8 +720,8 @@
           <h5>On-device iOS speech recognition instead of a transcription API</h5>
           <dl>
             <dt>Alternatives</dt><dd>Whisper via an edge function; a hosted STT vendor.</dd>
-            <dt>Why</dt><dd>Free, no per-minute cost, no audio ever leaves the device, and it streams interim results so the capture sheet can show words appearing as you speak. Audio is the single largest payload the app would otherwise upload — over a hotel Wi-Fi or foreign roaming, that matters.</dd>
-            <dt>Cost</dt><dd>iOS-only quality, English-locked (<code>lang: 'en-US'</code>), and the module needs a real build. <code>useVoiceRecording</code> carries three defensive event handlers — <code>end</code>, <code>nomatch</code>, <code>error</code> — because iOS can end a session without ever emitting a final result, which would otherwise strand the mic button on "Listening…".</dd>
+            <dt>Why</dt><dd>Free, no per-minute cost, no audio ever leaves the device, and it streams interim results so the capture sheet shows words appearing as you speak. Audio is also the single largest payload the app would otherwise upload — on hotel Wi-Fi or foreign roaming, that is the difference between capture working and capture hanging.</dd>
+            <dt>Tradeoff</dt><dd>iOS-only quality, English-locked (<code>lang: 'en-US'</code>), and the module needs a real build. <code>useVoiceRecording</code> carries three defensive event handlers — <code>end</code>, <code>nomatch</code>, <code>error</code> — because iOS can end a session without ever emitting a final result, which would otherwise strand the mic button on "Listening…".</dd>
           </dl>
         </div>
 
@@ -708,17 +733,17 @@
 
         <p>The capture button lives above the navigator, not inside a screen. <code>MainStack</code> renders a <code>View</code> containing the stack, then <code>FloatingCaptureButton</code>, then <code>NoteCaptureSheet</code> as siblings — so capture is reachable from every screen at every depth, and a note can be started from a blog post as easily as from Home. Tap opens the sheet; long-press opens it and starts recording immediately.</p>
 
-        <p><code>MainStack</code> is also where three background behaviours are wired, because it is the outermost component that exists exactly once per authenticated session: queue draining on mount, on network reconnect, and on <code>AppState</code> returning to <code>active</code>; and the location sweep and place-name backfill, run once per session in that order (§08).</p>
+        <p><code>MainStack</code> is also where three background behaviors are wired, because it is the outermost component that exists exactly once per authenticated session: queue draining on mount, on network reconnect, and on <code>AppState</code> returning to <code>active</code>; and the location sweep and place-name backfill, run once per session in that order (§08).</p>
 
         <h4>Theme</h4>
-        <p>A single dark palette in <code>src/theme/index.ts</code> — warm amber <code>#C8703A</code> on <code>#111111</code> — exported as flat token objects (<code>Colors</code>, <code>CategoryColors</code>, <code>Typography</code>, <code>Spacing</code>, <code>Shadows</code>, <code>BorderRadius</code>). No styling library. Trips with no cover photo get a deterministic gradient chosen by hashing the trip name, so the same trip is always the same colour without storing anything.</p>
+        <p>A single dark palette in <code>src/theme/index.ts</code> — warm amber <code>#C8703A</code> on <code>#111111</code> — exported as flat token objects (<code>Colors</code>, <code>CategoryColors</code>, <code>Typography</code>, <code>Spacing</code>, <code>Shadows</code>, <code>BorderRadius</code>). No styling library. Trips with no cover photo get a deterministic gradient chosen by hashing the trip name, so the same trip is always the same color without storing anything.</p>
       </section>
 
       <!-- ============================================ 4 -->
       <section id="code">
         <h2><span class="num">04</span>Code layering, and where the tests live</h2>
 
-        <p>The <code>src/</code> tree follows one convention with real teeth: <strong>every service is split into a <code>*Service.ts</code> that does I/O and a <code>*Helpers.ts</code> that is pure</strong>. All the decisions live in the helpers, all the network lives in the services.</p>
+        <p>There is one convention in <code>src/</code> that does real work: <strong>every service is split into a <code>*Service.ts</code> that does I/O and a <code>*Helpers.ts</code> that is pure</strong>. All the decisions live in the helpers, all the network lives in the services. The payoff is that the logic worth testing has no I/O standing in front of it.</p>
 
         <figure>
           <div class="fig-scroll">
@@ -744,7 +769,7 @@
                 <text x="58" y="198" font-size="12.5">services/*Service.ts</text>
                 <text x="58" y="216" font-size="10.5" opacity="0.6">the only files that import supabase, Location, ImagePicker, AsyncStorage</text>
                 <text x="58" y="274" font-size="12.5">services/*Helpers.ts</text>
-                <text x="58" y="292" font-size="10.5" opacity="0.6">pure — merge rules, distance maths, validation, markdown, ranking, formatting</text>
+                <text x="58" y="292" font-size="10.5" opacity="0.6">pure — merge rules, distance math, validation, markdown, ranking, formatting</text>
               </g>
 
               <g stroke="currentColor" stroke-width="1.2" marker-end="url(#ah2)" fill="none">
@@ -772,19 +797,19 @@
           <h5>No Redux, no React Query, no state library at all</h5>
           <dl>
             <dt>Alternatives</dt><dd>TanStack Query for server cache; Zustand or Redux Toolkit for app state.</dd>
-            <dt>Why</dt><dd>The server already pushes changes. Each list hook does exactly three things: fetch once, subscribe to a filtered Postgres change stream, and reduce <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code> into local state. A cache library would sit between the push and the render and mostly need invalidating by hand. Only one piece of genuinely global state exists — the auth session — and that is a context.</dd>
-            <dt>Cost</dt><dd>The reducer shape is copy-pasted across <code>useTrips</code>, <code>useNotes</code>, <code>useBlogPosts</code> and <code>useTripDetail</code>. Deduplicating it into a generic hook is an obvious future refactor that has not been worth doing yet.</dd>
+            <dt>Why</dt><dd>You reach for a server-cache library when you are polling and need to know what has gone stale. Here the server already pushes changes, so there is nothing to invalidate. Each list hook does exactly three things: fetch once, subscribe to a filtered Postgres change stream, and reduce <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code> into local state. A cache layer would sit between the push and the render and mostly need invalidating by hand. Exactly one piece of genuinely global state exists — the auth session — and a context handles it.</dd>
+            <dt>Tradeoff</dt><dd>The reducer shape is copy-pasted across <code>useTrips</code>, <code>useNotes</code>, <code>useBlogPosts</code> and <code>useTripDetail</code>. Deduplicating it into a generic hook is an obvious future refactor that has not been worth doing yet.</dd>
           </dl>
         </div>
 
-        <p>Two subtleties in the hooks are worth calling out because they were bugs first. Channel names carry a per-instance random suffix (<code>trips:${userId}:${instanceId}</code>) because two mounted copies of the same hook silently collided on a shared channel name. And <code>useSignedPhotos</code> joins its ref array into a single string key so the effect re-runs on <em>content</em> change rather than on every new array identity.</p>
+        <p>Two details in the hooks are worth calling out, both of which were bugs first. The common mistake with Realtime is naming a channel after the thing it watches: <code>trips:${userId}</code> looks canonical and breaks the moment two copies of the hook are mounted at once, because they silently share one channel. Names now carry a per-instance random suffix — <code>trips:${userId}:${instanceId}</code>. The second is dependency identity: <code>useSignedPhotos</code> joins its ref array into a single string key so the effect re-runs on <em>content</em> change rather than on every new array object.</p>
       </section>
 
       <!-- ============================================ 5 -->
       <section id="data">
         <h2><span class="num">05</span>The data layer</h2>
 
-        <p>Six tables and one view, built up across 27 migrations. Migrations are the source of truth, numbered <code>NNN_description.sql</code>, applied through the Supabase MCP server and committed alongside the code that depends on them; <code>src/lib/database.types.ts</code> is regenerated after every schema change.</p>
+        <p>Six tables and one view, built up across 27 migrations. Migrations are the source of truth — numbered <code>NNN_description.sql</code>, applied through the Supabase MCP server, and committed alongside the code that depends on them. <code>src/lib/database.types.ts</code> is regenerated after every schema change, so the type system and the schema cannot quietly drift apart.</p>
 
         <div class="table-wrap">
           <table>
@@ -796,7 +821,7 @@
               <tr><td><code>trips</code></td><td>name, destinations, dates, status, cover, note count</td><td>owner</td><td>owner</td></tr>
               <tr><td><code>notes</code></td><td>text, category, rating, coords + provenance, photo refs, timestamps, offline id</td><td>owner</td><td>owner, <em>and</em> the trip must be theirs</td></tr>
               <tr><td><code>blog_posts</code></td><td>status, title, markdown, cover, selected photos, itinerary jsonb</td><td>owner</td><td>owner + <code>generate-blog</code> via service role</td></tr>
-              <tr><td><code>public_places</code></td><td>anonymised place identity, averaged coords, visit/rating counts</td><td><strong>everyone</strong>, including anon</td><td>nobody — only the definer function</td></tr>
+              <tr><td><code>public_places</code></td><td>anonymized place identity, averaged coords, visit/rating counts</td><td><strong>everyone</strong>, including anon</td><td>nobody — only the definer function</td></tr>
               <tr><td><code>public_place_contributions</code></td><td>note → place ledger, for idempotency</td><td><strong>nobody</strong></td><td>nobody — only the definer function</td></tr>
               <tr><td><code>public_destinations</code></td><td>view: one row per city, place count, visits, categories</td><td>inherits <code>public_places</code></td><td>—</td></tr>
             </tbody>
@@ -805,7 +830,7 @@
 
         <h3>RLS is the authorization layer</h3>
 
-        <p>Every table has row-level security enabled and policies scoped to <code>auth.uid()</code>. Two of them do more than compare a user id, and both are load-bearing:</p>
+        <p>This is the thing to understand about the data layer: there is no application-tier permission check anywhere in the system, because every table has row-level security enabled with policies scoped to <code>auth.uid()</code>. Two of those policies do more than compare a user id, and both are load-bearing:</p>
 
         <ul class="plain">
           <li><strong><code>notes_insert_own</code></strong> also asserts <code>exists (select 1 from trips where id = trip_id and user_id = auth.uid())</code>. Matching <code>user_id</code> alone would let a crafted client attach their own note to someone else's trip.</li>
@@ -817,22 +842,22 @@
           <h5>Invariants belong in the database, not in the app</h5>
           <dl>
             <dt>What that means</dt><dd><code>trips.note_count</code> is maintained by a trigger on insert, delete <em>and</em> trip-changing updates. <code>updated_at</code> is a trigger. Categories, statuses, ratings and location sources are <code>CHECK</code> constraints, not TypeScript unions — the unions in <code>*Helpers.ts</code> narrow the generated row types to match what the constraint already enforces. Ratings carry a second constraint: a rating may only exist on a rateable category, so a category switch cannot leave an orphaned star count behind.</dd>
-            <dt>Why</dt><dd>There are three write paths into <code>notes</code> — the app, the offline drain, and the tagging pass — and later a fourth (edge functions with the service role). A rule enforced in one of them is not a rule.</dd>
-            <dt>Cost</dt><dd>Business logic in PL/pgSQL is harder to test and to review than TypeScript. It is covered by SQL test files under <code>supabase/tests/</code> rather than by Jest.</dd>
+            <dt>Why</dt><dd>There are three write paths into <code>notes</code> — the app, the offline drain, the tagging pass — and later a fourth, edge functions running with the service role. A rule enforced in one of them is not a rule. Put it in a trigger or a <code>CHECK</code> and it holds no matter which path arrives.</dd>
+            <dt>Tradeoff</dt><dd>Business logic in PL/pgSQL is harder to test and to review than TypeScript. It is covered by SQL test files under <code>supabase/tests/</code> rather than by Jest.</dd>
           </dl>
         </div>
 
         <p>Every trigger function is hardened the same way: <code>set search_path</code> pinned, and <code>EXECUTE</code> revoked from <code>public</code>, <code>anon</code> and <code>authenticated</code>. In Supabase, a <code>SECURITY DEFINER</code> function in the <code>public</code> schema is otherwise reachable as a REST endpoint — <code>/rest/v1/rpc/handle_new_user</code> — and <code>CREATE OR REPLACE</code> re-grants the default, so migrations 002a and 003a exist purely to re-revoke.</p>
 
         <h4>Realtime, and the replica identity trap</h4>
-        <p><code>trips</code>, <code>notes</code> and <code>blog_posts</code> are in the <code>supabase_realtime</code> publication. Migration 009 sets <code>REPLICA IDENTITY FULL</code> on all three: with the default identity, a <code>DELETE</code> event carries only the primary key, so a subscription filtered on <code>user_id=eq.…</code> never matches the delete and the removed row lingers in the list forever. That bug showed up twice — a deleted trip still in the capture picker, a discarded draft still in the Blog tab — before the cause was found.</p>
+        <p><code>trips</code>, <code>notes</code> and <code>blog_posts</code> are in the <code>supabase_realtime</code> publication. Migration 009 sets <code>REPLICA IDENTITY FULL</code> on all three, and the reason is a trap worth knowing about. With the default replica identity a <code>DELETE</code> event carries only the primary key, so a subscription filtered on <code>user_id=eq.…</code> never matches its own deletes. Inserts and updates work perfectly; deletes silently do nothing and the removed row lingers in the list forever. That one cost two separate bug hunts — a deleted trip still in the capture picker, a discarded draft still in the Blog tab — before the cause was found.</p>
       </section>
 
       <!-- ============================================ 6 -->
       <section id="writes">
         <h2><span class="num">06</span>The offline-first write path</h2>
 
-        <p class="lede">This is the heart of the app. Capture never touches the network. It writes to a durable local queue and returns; everything after that is a background drain that can fail and retry forever without losing the note.</p>
+        <p class="lede">This is the heart of the app, and it inverts the usual order. Capture never touches the network: it writes to a durable local queue and returns. Everything after that is a background drain that can fail and retry forever without ever putting the note at risk.</p>
 
         <figure>
           <div class="fig-scroll">
@@ -912,8 +937,8 @@
           <h5>A client-minted <code>offline_id</code> with a unique constraint, instead of server-assigned ids</h5>
           <dl>
             <dt>How</dt><dd><code>expo-crypto</code> mints a UUID before the note is queued. <code>notes.offline_id</code> is <code>not null unique</code>, and the drain writes with <code>upsert(row, { onConflict: 'offline_id', ignoreDuplicates: true })</code>.</dd>
-            <dt>Why</dt><dd>It makes the drain <strong>idempotent by construction</strong>. A drain that uploads a note and then dies before removing it from the queue is harmless: the next drain re-sends it and the database ignores the duplicate. No de-duplication logic, no "did it commit?" ambiguity, no tombstones.</dd>
-            <dt>Cost</dt><dd>Two identities per note. The photo queue has to key against either <code>offline_note_id</code> or the database <code>id</code> depending on which exists yet, which is the messiest part of <code>photoUploadService</code>.</dd>
+            <dt>Why</dt><dd>It makes the drain <strong>idempotent by construction</strong> rather than by care. A drain that uploads a note and then dies before clearing the queue is harmless: the next drain re-sends it and the database ignores the duplicate. No de-duplication pass, no "did it commit?" ambiguity, no tombstones — the constraint does the work that retry logic would otherwise have to do by hand.</dd>
+            <dt>Tradeoff</dt><dd>Two identities per note. The photo queue has to key against either <code>offline_note_id</code> or the database <code>id</code> depending on which exists yet, which is the messiest part of <code>photoUploadService</code>.</dd>
           </dl>
         </div>
 
@@ -922,8 +947,8 @@
           <h5>Two separate queues, not one</h5>
           <dl>
             <dt>Alternatives</dt><dd>A single queue with an item type; upload photos synchronously before saving the note (the original design).</dd>
-            <dt>Why</dt><dd>Text and photos have different failure profiles. A note is a few hundred bytes that either lands or does not; a photo is hundreds of kilobytes that may fail repeatedly on a weak connection. Coupling them meant a photo note could not be captured offline at all, and the capture sheet blocked on upload. Separating them let capture return instantly and gave photos their own retry budget (<code>MAX_ATTEMPTS = 5</code>) and their own UI state.</dd>
-            <dt>Cost</dt><dd><code>drainPhotoUploads</code> has genuinely tricky group-resolution logic: a note's <code>photo_urls</code> is patched only once <em>every</em> photo in its group has either succeeded this run or exhausted its attempts, so a half-uploaded note never renders a partial strip.</dd>
+            <dt>Why</dt><dd>Text and photos have completely different failure profiles, and one queue can only be tuned for one of them. A note is a few hundred bytes that either lands or does not; a photo is hundreds of kilobytes that may fail repeatedly on a weak connection. Coupling them meant a photo note could not be captured offline at all, and the capture sheet blocked on upload. Splitting them let capture return instantly, and gave photos their own retry budget (<code>MAX_ATTEMPTS = 5</code>) and their own UI state.</dd>
+            <dt>Tradeoff</dt><dd><code>drainPhotoUploads</code> has genuinely tricky group-resolution logic: a note's <code>photo_urls</code> is patched only once <em>every</em> photo in its group has either succeeded this run or exhausted its attempts, so a half-uploaded note never renders a partial strip.</dd>
           </dl>
         </div>
 
@@ -935,9 +960,9 @@
       <section id="photos">
         <h2><span class="num">07</span>The photo pipeline</h2>
 
-        <p>Photos are the only large binary the app handles, and their storage model was rewritten once, under pressure, after a security audit. That rewrite is the most instructive change in the codebase.</p>
+        <p>Photos are the only large binary the app handles, and their storage model was rewritten once, under pressure, after a security audit. It is the most instructive change in the codebase, so it is worth walking through what was wrong rather than just stating what is there now.</p>
 
-        <p>Originally the <code>photos</code> bucket was public: upload, call <code>getPublicUrl</code>, store the URL in <code>notes.photo_urls</code>, render it. Simple, fast, and wrong — the SELECT policy that made public URLs work also backs the storage <em>list</em> API. Anyone holding the anon key, which ships inside the app binary, could enumerate the bucket root to get every user's UUID folder, then every note id, then every filename.</p>
+        <p>The original design is the one almost everyone writes first: make the <code>photos</code> bucket public, upload, call <code>getPublicUrl</code>, store that URL in <code>notes.photo_urls</code>, render it. Simple, fast, and wrong. The SELECT policy that makes public URLs work also backs the storage <em>list</em> API, and the anon key ships inside the app binary. Anyone holding it could enumerate the bucket root to get every user's UUID folder, then every note id, then every filename.</p>
 
         <figure>
           <div class="fig-scroll">
@@ -1011,14 +1036,14 @@
           <figcaption><b>Fig 4</b>The fix changed what the database stores, not just what the policy allows. A public URL is a durable capability handed out with the row; a bucket path is an identifier that means nothing without an authenticated signer. Flipping the bucket to private was also required — policies alone do not stop <code>/object/public/…</code> from serving bytes.</figcaption>
         </figure>
 
-        <p>The rewrite touched every read path, so it is centralised in two files:</p>
+        <p>The rewrite touched every read path, so it is centralized in two files:</p>
 
         <ul class="plain">
-          <li><strong><code>photoRefs.ts</code></strong> — pure. <code>toStoragePath()</code> normalises anything the database might hold: a bare path, a path with the cover photo's <code>?v=</code> cache-buster, or a legacy <code>/object/public/photos/…</code> URL written before the lockdown. Legacy rows were never rewritten; every read path normalises instead, and only paths are ever written now.</li>
+          <li><strong><code>photoRefs.ts</code></strong> — pure. <code>toStoragePath()</code> normalizes anything the database might hold: a bare path, a path with the cover photo's <code>?v=</code> cache-buster, or a legacy <code>/object/public/photos/…</code> URL written before the lockdown. Legacy rows were never rewritten; every read path normalizes instead, and only paths are ever written now.</li>
           <li><strong><code>signedPhotoUrls.ts</code></strong> — the signer. Batches up to 100 paths per request, caches results in memory keyed by the <em>reference</em> rather than the path (so the cover's cache-buster still busts the cache), treats a URL as expired five minutes early so it never dies mid-render, and returns a map containing only what resolved. A photo that cannot be signed is simply absent — callers render a placeholder. A missing photo is never a thrown error.</li>
         </ul>
 
-        <p>Two TTLs, chosen for different threat models: <strong>60 minutes</strong> for in-app rendering, because a leaked URL is valid until it expires; <strong>7 days</strong> for exported Markdown and HTML, because a shared file is read outside the app and its images must outlive the session, but a forwarded export should not become a permanent handle. The cache is cleared on <code>SIGNED_OUT</code> so one user's URLs never survive into the next user's session on a shared device.</p>
+        <p>Two TTLs, and the split is a threat-model decision rather than a performance one: <strong>60 minutes</strong> for in-app rendering, because a leaked URL is valid until it expires; <strong>7 days</strong> for exported Markdown and HTML, because a shared file is read outside the app and its images must outlive the session, but a forwarded export should not become a permanent handle. The cache is cleared on <code>SIGNED_OUT</code> so one user's URLs never survive into the next user's session on a shared device.</p>
 
         <p>Uploads are resized to a 1200 px longest edge and re-encoded as JPEG at 0.75 quality before leaving the device. Paths are deterministic — <code>{userId}/{noteId}/{index}.jpg</code>, and <code>{userId}/trip-covers/{tripId}.jpg</code> for covers with <code>upsert: true</code>, so replacing a cover overwrites rather than orphaning. The first path segment being the user id is what makes the storage RLS policies expressible at all: <code>(storage.foldername(name))[1] = auth.uid()::text</code>.</p>
       </section>
@@ -1029,7 +1054,7 @@
 
         <p class="lede">The subtlest subsystem in the app, and the one that exists because of a real, repeated bug: a note typed up about Paris, at home in California, was tagged "Mountain View" — because that is where the phone was when the words were written.</p>
 
-        <p>The fix was not better GPS. It was to stop treating a coordinate as a fact and start treating it as a <em>claim with a source</em>. <code>notes.location_source</code> records which of four things produced the coordinates, and every downstream rule keys off it.</p>
+        <p>The fix was not better GPS, and this is the part that generalizes: stop treating a coordinate as a fact and start treating it as a <em>claim with a source</em>. <code>notes.location_source</code> records which of four things produced the coordinates, and every downstream rule keys off it. Once provenance is in the row, "is this location right?" becomes a question you can actually answer.</p>
 
         <figure>
           <div class="fig-scroll">
@@ -1121,7 +1146,7 @@
       <section id="ai">
         <h2><span class="num">09</span>The AI layer</h2>
 
-        <p>Three Deno edge functions. The client holds no model key and no service role key, so every AI call is shaped as a function invocation. The division of labour between them is a cost decision as much as a capability one.</p>
+        <p>Three Deno edge functions. The client holds no model key and no service role key, which is what forces every AI call into the shape of a function invocation rather than a direct call. The division of labor between the three is a cost decision as much as a capability one: use the cheapest model that can do the job, and spend the expensive one exactly once per trip.</p>
 
         <div class="table-wrap">
           <table>
@@ -1163,7 +1188,7 @@
 
         <h3>Blog generation: a long job on a platform with a wall clock</h3>
 
-        <p>A photo-rich trip is far too much work for one HTTP response. The function inserts the row, returns the id in milliseconds, and hands the real work to <code>EdgeRuntime.waitUntil()</code>. The client never polls — it subscribes to <code>blog_posts</code> over Realtime and the card flips from <em>Generating…</em> to <em>Ready to review</em> on its own.</p>
+        <p>A photo-rich trip is far too much work for one HTTP response, so the standard pattern applies: accept the job, return a handle, do the work out of band. The function inserts the row, returns its id in milliseconds, and hands the real work to <code>EdgeRuntime.waitUntil()</code>. The client never polls for it — it is already subscribed to <code>blog_posts</code> over Realtime, so the card flips from <em>Generating…</em> to <em>Ready to review</em> on its own. Realtime being there for other reasons is what makes the async job nearly free to build.</p>
 
         <p>The vision pass is where the cost lives, and it is bounded on three axes. Photos are downloaded with the service role, decoded, resized to a 1536 px longest edge and re-encoded at JPEG 80 — roughly 3× cheaper in image tokens than full resolution, and ample for judging composition. At most <strong>24</strong> photos are sent as images; the rest are listed by id only, so they stay selectable but unjudged. Preprocessing runs concurrently in batches of 5, which keeps peak memory to five decoded images while cutting wall-clock enough that a 68-photo trip finished in ~54 s of a 140 s budget.</p>
 
@@ -1242,7 +1267,7 @@
       <section id="community">
         <h2><span class="num">10</span>The community layer</h2>
 
-        <p>The only data that crosses from private to public. Completing a trip aggregates its named, categorised places into <code>public_places</code> — an anonymised table holding no <code>user_id</code>, no timestamps of visit, and no note prose. Just place identity, running-average coordinates, visit and rating counts, and a category tally.</p>
+        <p>This is the one place data crosses from private to public, so the design question is what to <em>leave behind</em>. Completing a trip aggregates its named, categorized places into <code>public_places</code>: a table with no <code>user_id</code>, no visit timestamps, and no note prose. What crosses is place identity, running-average coordinates, visit and rating counts, and a category tally — enough for a shared map, not enough to reconstruct anyone's trip.</p>
 
         <figure>
           <div class="fig-scroll">
@@ -1320,18 +1345,18 @@
           <dl>
             <dt>How</dt><dd><code>public_place_contributions</code> holds one row per contributing note, with <code>note_id</code> unique. RLS is enabled with <strong>no policies at all</strong> — it is fully unreachable by <code>anon</code> and <code>authenticated</code>; only the definer function, running as table owner, touches it.</dd>
             <dt>Why</dt><dd>It makes "count this note once, ever" a database constraint rather than application care. A trip can be re-completed, a note re-tagged, a backfill re-run — the counts stay correct. And because the ledger is the one structure linking a private note to a public place, it must never be readable; RLS-with-no-policies is the strongest available statement of that.</dd>
-            <dt>Cost</dt><dd>The aggregate is <strong>add-only</strong>. Deleting a note removes its ledger row but does not decrement <code>public_places</code>, so counts drift upward over time. Accepted for V1.</dd>
+            <dt>Tradeoff</dt><dd>The aggregate is <strong>add-only</strong>. Deleting a note removes its ledger row but does not decrement <code>public_places</code>, so counts drift upward over time. Accepted for V1.</dd>
           </dl>
         </div>
 
-        <p>Place identity is a normalised key — lowercased, trimmed, whitespace-collapsed name and city joined by <code>|</code> — computed by an <code>immutable</code> SQL function that is also used directly by the SQL tests, so the tests exercise the same code the trigger does. Coordinates accumulate as a running average with a <code>coord_count</code>, so places gain precision as more people record them. The <code>public_destinations</code> view is declared <code>security_invoker = on</code> so it honours the underlying table's RLS rather than the view owner's rights.</p>
+        <p>Place identity is a normalized key — lowercased, trimmed, whitespace-collapsed name and city joined by <code>|</code> — computed by an <code>immutable</code> SQL function that is also used directly by the SQL tests, so the tests exercise the same code the trigger does. Coordinates accumulate as a running average with a <code>coord_count</code>, so places gain precision as more people record them. The <code>public_destinations</code> view is declared <code>security_invoker = on</code> so it honours the underlying table's RLS rather than the view owner's rights.</p>
       </section>
 
       <!-- ============================================ 11 -->
       <section id="security">
         <h2><span class="num">11</span>Security posture</h2>
 
-        <p>The trust model in one line: <strong>the anon key ships inside the app binary, so anything the anon role can do, a stranger can do.</strong> Every policy is written against that assumption. A pre-beta audit in August 2026 found three places where it had not been, all fixed in one pass before any tester data existed.</p>
+        <p>The trust model fits in one line: <strong>the anon key ships inside the app binary, so anything the anon role can do, a stranger can do.</strong> Every policy has to be written against that assumption. A pre-beta audit in August 2026 found three places where it had not been, all fixed in one pass before any tester data existed.</p>
 
         <div class="table-wrap">
           <table>
@@ -1346,7 +1371,7 @@
               </tr>
               <tr>
                 <td><span class="pill gap">High</span></td>
-                <td><code>profiles</code> SELECT was <code>using (true)</code> with no role clause — anon could dump every UUID, real name and signup time, which chains with the above into targeted deanonymisation.</td>
+                <td><code>profiles</code> SELECT was <code>using (true)</code> with no role clause — anon could dump every UUID, real name and signup time, which chains with the above into targeted deanonymization.</td>
                 <td>Migration 025: own-row only. Nothing in V1 reads another user's profile; the aggregate function is <code>SECURITY DEFINER</code> and unaffected.</td>
               </tr>
               <tr>
@@ -1379,7 +1404,7 @@
         <p>One GitHub Actions workflow, every three days: a <code>curl</code> against <code>public_places</code> using the anon key. Supabase free-tier projects auto-pause after ~7 days idle, and the failure mode is specific and bad — <em>a tester's app silently stops saving notes mid-trip, and their trip cannot be repeated.</em> It targets the one genuinely public table so no elevated credential is needed, and uses <code>curl -f</code> so a paused project turns the job red instead of passing silently.</p>
 
         <h4>Tests</h4>
-        <p>362 tests across 40 suites, all passing, <code>jest-expo</code> preset. The distribution follows the layering: heavy coverage of pure helpers (merge rules, distance maths, markdown, ranking, validation), mocked-Supabase coverage of services, render tests for the components with real conditional logic. SQL-level behaviour has its own test files under <code>supabase/tests/</code>. There is no E2E layer; device QA is manual and recorded in <code>docs/progress.md</code>.</p>
+        <p>362 tests across 40 suites, all passing, <code>jest-expo</code> preset. The distribution follows the layering: heavy coverage of pure helpers (merge rules, distance math, markdown, ranking, validation), mocked-Supabase coverage of services, render tests for the components with real conditional logic. SQL-level behavior has its own test files under <code>supabase/tests/</code>. There is no E2E layer; device QA is manual and recorded in <code>docs/progress.md</code>.</p>
 
         <h4>Documentation as an artifact</h4>
         <p>Every feature has a spec and a plan committed under <code>docs/superpowers/</code> — 21 specs and 34 plans across the project's life — and <code>docs/progress.md</code> is a 771-line running record of decisions, bugs found in QA, and deferrals with reasons. Most of the "why" reconstructed in this paper came from there rather than from the code.</p>
@@ -1389,7 +1414,7 @@
       <section id="failure">
         <h2><span class="num">13</span>How it behaves when things break</h2>
 
-        <p>A useful way to read an architecture is to ask what happens when each dependency fails. Notebound answers this unusually well for the capture path and unevenly elsewhere.</p>
+        <p>The fastest way to judge an architecture is to walk its dependencies and ask what happens when each one is down. Notebound answers that well for the capture path and unevenly everywhere else — which is the right place to be strong if you only get to pick one.</p>
 
         <div class="table-wrap">
           <table>
