@@ -59,6 +59,10 @@ export function filterPins(pins: MapPin[], category: Category | null): MapPin[] 
 const DEFAULT_DELTA = 0.02;
 const MIN_DELTA = 0.01;
 const PADDING = 1.4;
+// MapKit throws on a region wider than the globe, so a trip with pins on opposite
+// sides of the world (e.g. a departure-airport photo) must not exceed these.
+const MAX_LAT_DELTA = 170;
+const MAX_LNG_DELTA = 350;
 
 export type LatLng = { lat: number; lng: number };
 
@@ -86,7 +90,7 @@ export function regionForPins(points: LatLng[]): Region | null {
   return {
     latitude: (minLat + maxLat) / 2,
     longitude: (minLng + maxLng) / 2,
-    latitudeDelta: Math.max((maxLat - minLat) * PADDING, MIN_DELTA),
-    longitudeDelta: Math.max((maxLng - minLng) * PADDING, MIN_DELTA),
+    latitudeDelta: Math.min(Math.max((maxLat - minLat) * PADDING, MIN_DELTA), MAX_LAT_DELTA),
+    longitudeDelta: Math.min(Math.max((maxLng - minLng) * PADDING, MIN_DELTA), MAX_LNG_DELTA),
   };
 }

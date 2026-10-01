@@ -88,6 +88,15 @@ describe('regionForPins', () => {
     expect(region.latitudeDelta).toBe(0.01);
     expect(region.longitudeDelta).toBe(0.01);
   });
+  it('keeps deltas within MapKit limits when pins span the globe', () => {
+    // A San Mateo photo on a Tokyo trip: raw longitude span ~262deg, ~367deg once padded.
+    const region = regionForPins([
+      { lat: 35.71, lng: 139.78 },
+      { lat: 37.6, lng: -122.33 },
+    ])!;
+    expect(region.latitudeDelta).toBeLessThanOrEqual(180);
+    expect(region.longitudeDelta).toBeLessThanOrEqual(360);
+  });
   it('accepts a plain lat/lng list (not just MapPins)', () => {
     const region = regionForPins([
       { lat: 10, lng: 20 },
