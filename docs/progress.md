@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-07  
 **GitHub:** https://github.com/rutvijdhotey/notebound  
-**Status:** **Shifting from feature work to App Store release.** Release plan written at `docs/superpowers/plans/2026-08-07-app-store-release.md` — 6 phases (accounts → UGC posture decision → required code → infra hardening → store assets → TestFlight → submission). Repo verified 2026-08-07: **322 tests / 37 suites passing, `tsc --noEmit` clean**, V1 feature backlog complete, `ios/` regenerated 2026-07-31 with bundle ID `com.rutvijdhotey.intoyourstories` + Notebound product name.
+**Status:** **Shifting from feature work to App Store release.** Release plan written at `docs/superpowers/plans/2026-08-07-app-store-release.md` — 6 phases (accounts → UGC posture decision → required code → infra hardening → store assets → TestFlight → submission). Repo verified 2026-08-07: **322 tests / 37 suites passing, `tsc --noEmit` clean**, V1 feature backlog complete, `ios/` regenerated 2026-07-31 with bundle ID `com.rutvijdhotey.notebound` + Notebound product name (the bundle ID was renamed from `com.rutvijdhotey.intoyourstories` since).
 
 **Release-readiness audit findings (2026-08-07) — three gaps that were not on the backlog:**
 1. **No in-app account deletion.** App Store Guideline 5.1.1(v) requires it for any app offering account creation; only an inline "Sign out" exists on `HomeScreen.tsx:137`. Hard rejection at review. Needs a `delete-account` edge function (service role, `verify_jwt: true`) since the client can never hold the service key.
