@@ -18,6 +18,26 @@ Notebound is a React Native app for iOS, backed entirely by a single Supabase pr
 - **Shares on your terms.** Export a post as Markdown or HTML from the share sheet.
 - **Explore.** After a trip completes, anonymized place data (name, city, category, rating) feeds a community map you can browse by destination. Journals, photos, and anything private stay private.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/home.png" width="220" alt="Home screen with active and completed trips"><br><sub><b>Your trips</b></sub></td>
+    <td align="center"><img src="docs/screenshots/japan-trip.png" width="220" alt="A trip feed with notes and photos"><br><sub><b>Capture feed</b></sub></td>
+    <td align="center"><img src="docs/screenshots/france-map.png" width="220" alt="Trip map with category-colored pins"><br><sub><b>Trip map</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/blog-story.png" width="220" alt="AI-written blog post with a cover photo"><br><sub><b>Generated story</b></sub></td>
+    <td align="center"><img src="docs/screenshots/itinerary.png" width="220" alt="Itinerary overview map"><br><sub><b>Itinerary map</b></sub></td>
+    <td align="center"><img src="docs/screenshots/itinerary-days.png" width="220" alt="Day-by-day itinerary cards"><br><sub><b>Day by day</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/explore.png" width="220" alt="Explore tab showing destinations by popularity"><br><sub><b>Explore</b></sub></td>
+    <td align="center"><img src="docs/screenshots/destination.png" width="220" alt="Community map and ranked places for Paris"><br><sub><b>Destination</b></sub></td>
+    <td></td>
+  </tr>
+</table>
+
 ## Architecture in brief
 
 Three boxes: the **device**, one **Supabase project** (Auth, Postgres with RLS, Realtime, Storage, Edge Functions, pg_cron), and the **Anthropic API**.
